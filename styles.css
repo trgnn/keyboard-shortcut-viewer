@@ -1,6 +1,8 @@
 /* ===== shared keyboard ===== */
 .opt-d .d-footer {
-  position: absolute; left: 0; right: 0; bottom: 0; z-index: 1;
+  /* in-flow at the bottom (kb-wrap's auto margins push it down); shares the same
+     centered content column as .head / .kb-wrap so its edges line up with the keyboard */
+  width: 100%; max-width: var(--content-max); margin: 0 auto;
   display: flex; align-items: center; justify-content: space-between; gap: 18px;
   padding: 16px 0 4px; pointer-events: none;
 }
@@ -106,7 +108,12 @@
   --keyBg: rgba(19,21,25,0.6);
   background: #0a0b0d; color: #d7dbe0;
   position: relative;
-  display: grid; grid-template-columns: 1fr 356px;
+  /* desktop-only: never let the layout cram below this — narrower viewports scroll horizontally */
+  min-width: 1120px;
+  /* rail grows gently on large screens, the stage (1fr) takes the rest */
+  display: grid; grid-template-columns: 1fr clamp(356px, 22vw, 420px);
+  /* content max-width that the stage column centers around (see .head / .kb-wrap / .d-footer) */
+  --content-max: 1180px;
 }
 .opt-d .frame-grid {
   position: absolute; inset: 0; z-index: 0; pointer-events: none;
@@ -128,13 +135,13 @@
   -webkit-mask-image: radial-gradient(var(--glow-r, 90px) circle at var(--gx, 50%) var(--gy, -40%), #000, rgba(0,0,0,.3) 50%, transparent 72%);
   mask-image: radial-gradient(var(--glow-r, 90px) circle at var(--gx, 50%) var(--gy, -40%), #000, rgba(0,0,0,.3) 50%, transparent 72%);
 }
-.opt-d .head { margin-bottom: 22px; }
+.opt-d .head { width: 100%; max-width: var(--content-max); margin: 0 auto 22px; }
 .opt-d .head .eyebrow { display: block; font: 600 11px/1 var(--ui); letter-spacing: .2em; text-transform: uppercase; color: var(--accent); margin-bottom: 11px; }
-.opt-d .head .title { margin: 0; font: 700 36px/1 var(--ui); letter-spacing: -.025em; color: #f4f6f7; }
+.opt-d .head .title { margin: 0; font: 700 clamp(36px, 2.4vw, 48px)/1 var(--ui); letter-spacing: -.025em; color: #f4f6f7; }
 .opt-d .head .lede { margin: 13px 0 0; font: 500 12.5px/1.5 var(--mono); color: #6b7280; }
 .opt-d .head .lede b { color: var(--accent); font-weight: 600; }
 .opt-d .panel { border: 1px solid #1d2026; background: rgba(13,15,18,0.4); -webkit-backdrop-filter: blur(3px); backdrop-filter: blur(3px); border-radius: 12px; padding: 22px; margin: 0; }
-.opt-d .kb-wrap { margin: auto 0; }
+.opt-d .kb-wrap { margin: auto; width: 100%; max-width: var(--content-max); }
 .opt-d .kb-foot { display: flex; justify-content: flex-end; margin-top: 12px; }
 .opt-d .reset-btn {
   display: inline-flex; align-items: center; gap: 6px; padding: 6px 0; background: none; border: none;
@@ -154,10 +161,11 @@
 .opt-d .rail {
   position: relative; z-index: 1;
   margin: 16px 16px 16px 0;
-  border: 1px solid #20242b; border-radius: 14px;
-  background: rgba(12,14,16,0.55);
-  -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px);
-  box-shadow: 0 24px 60px -34px #000, inset 0 1px 0 rgba(255,255,255,.03);
+  /* match the keyboard case (.panel) so both floating surfaces read the same:
+     same border, radius, fill, blur, and no shadow */
+  border: 1px solid #1d2026; border-radius: 12px;
+  background: rgba(13,15,18,0.4);
+  -webkit-backdrop-filter: blur(3px); backdrop-filter: blur(3px);
   display: flex; flex-direction: column; min-height: 0; overflow: hidden;
 }
 .opt-d .rlbl { font: 500 11px/1 var(--mono); letter-spacing: .04em; color: #4f565f; }
