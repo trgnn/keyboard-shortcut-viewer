@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Keyboard Shortcut Viewer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;450;500;600;650;700&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="styles.css" />
+<style>
+  html, body { margin: 0; height: 100%; background: #0a0b0d; }
+  #app { height: 100vh; }
+</style>
+</head>
+<body>
+<div id="app" class="ksv-app opt-d">
+  <div class="frame-grid"></div>
+  <div class="grid-lit"></div>
+
+  <div class="stage">
+    <div class="head">
+      <span class="eyebrow">keyboard</span>
+      <h1 class="title">Shortcut Viewer</h1>
+      <p class="lede">Click keys to compose a shortcut · double-click a modifier for a double-tap · <b>⇧R</b> clear keys · <b>⇧D</b> download</p>
+    </div>
+
+    <div class="kb-wrap">
+      <div class="kb-controls">
+        <div class="kbc">
+          <span class="kbc-l">hyperkey</span>
+          <div class="seg" id="hyperSeg"></div>
+        </div>
+        <div class="kbc">
+          <span class="kbc-l">distinguish L/R</span>
+          <div class="seg" id="lrSeg"></div>
+        </div>
+        <div class="kbc accent-kbc">
+          <span class="kbc-l">accent</span>
+          <div class="swatches" id="accentSwatches"></div>
+        </div>
+      </div>
+
+      <div class="panel"><div id="kbMount"></div></div>
+
+      <div class="kb-foot">
+        <button class="reset-btn" id="resetBtn">⟲ clear keys</button>
+      </div>
+    </div>
+
+    <footer class="d-footer">
+      <span class="cf-meta"><span class="cf-ver">v1</span><span class="cf-text">A clean visual for any shortcut on MacBook, because I needed one for a blog article.</span></span>
+      <a class="cf-link" href="https://trognon.space" target="_blank" rel="noopener noreferrer">trognon.space ↗</a>
+    </footer>
+  </div>
+
+  <aside class="rail">
+    <div class="inspector">
+      <section class="grp">
+        <div class="grp-h">layout</div>
+        <div class="seg wide" id="layoutSeg"></div>
+      </section>
+
+      <section class="grp">
+        <div class="grp-h">output</div>
+        <div class="seg wide" id="extSeg"></div>
+        <div class="seg wide" id="bgSeg"></div>
+      </section>
+    </div>
+
+    <div class="rail-prev">
+      <div class="fl-row">
+        <span class="rlbl">// export preview</span>
+        <span class="cap" id="sizeCap">—</span>
+      </div>
+      <div class="prev-card bg-dark" id="preview"></div>
+    </div>
+
+    <div class="rail-foot">
+      <button class="go" id="downloadBtn">↓ download png</button>
+    </div>
+  </aside>
+</div>
+
+<script src="ksv.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

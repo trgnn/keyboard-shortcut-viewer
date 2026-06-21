@@ -1,0 +1,471 @@
+/* Keyboard Shortcut Viewer — shared data, render, interaction, export.
+   Exposes window.KSV. Each app instance calls KSV.mount(rootEl, opts). */
+(function () {
+  // glyphs
+  const G = {
+    cmd: '\u2318', opt: '\u2325', ctrl: '\u2303', shift: '\u21E7',
+    caps: '\u21EA', tab: '\u21E5', ret: '\u23CE', del: '\u232B',
+    globe: '<svg class="ic" viewBox="0 0 16 16" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="1.25"><circle cx="8" cy="8" r="6.3"/><ellipse cx="8" cy="8" rx="2.7" ry="6.3"/><line x1="1.7" y1="8" x2="14.3" y2="8"/></svg>',
+    up: '\u25B2', down: '\u25BC', left: '\u25C0', right: '\u25B6',
+    esc: 'esc'
+  };
+  // The hyperkey: Caps Lock remapped to Control+Option+Command. (mods, no shift)
+  const HYPER = ['ctrl', 'opt', 'cmd'];
+  // true modifier keys — any number can be held; everything else is a single "activation" key
+  const MODS = new Set(['caps', 'fn', 'ctrl', 'opt', 'cmd', 'rcmd', 'ropt', 'lshift', 'rshift']);
+  // modifiers eligible for a double-tap shortcut (caps lock / hyper excluded)
+  const DBLABLE = new Set(['fn', 'ctrl', 'opt', 'cmd', 'rcmd', 'ropt', 'lshift', 'rshift']);
+  // left/right modifier pairs (for "distinguish L/R")
+  const PAIR = { cmd: 'rcmd', rcmd: 'cmd', opt: 'ropt', ropt: 'opt', lshift: 'rshift', rshift: 'lshift' };
+  const CANON = { rcmd: 'cmd', ropt: 'opt', rshift: 'lshift' };
+  const DIR = { cmd: 'left', rcmd: 'right', opt: 'left', ropt: 'right', lshift: 'left', rshift: 'right' };
+  const canon = (c) => CANON[c] || c;
+  // count distinct logical modifiers held (a linked L/R pair counts once when not distinguishing)
+  function logicalModCount(state) {
+    const lr = !!state.lr, seen = new Set();
+    state.sel.forEach((c) => { if (MODS.has(c)) seen.add(lr ? c : canon(c)); });
+    return seen.size;
+  }
+  // double-tap helpers
+  function isDbl(state, code) {
+    if (!state.dbl) return false;
+    if (state.dbl.has(code)) return true;
+    return !state.lr && PAIR[code] && state.dbl.has(PAIR[code]);
+  }
+  function clearDbl(state, code) {
+    if (!state.dbl) return;
+    state.dbl.delete(code);
+    if (!state.lr && PAIR[code]) state.dbl.delete(PAIR[code]);
+  }
+
+  // main 60-col block. each key: code, label, sub(optional small line), span, cls
+  const ROWS = [
+    // number row
+    [['`','`',null,4],['1','1',null,4],['2','2',null,4],['3','3',null,4],['4','4',null,4],
+     ['5','5',null,4],['6','6',null,4],['7','7',null,4],['8','8',null,4],['9','9',null,4],
+     ['0','0',null,4],['-','-',null,4],['=','=',null,4],['del',G.del,'delete',8,'mod sm ralign']],
+    // qwerty
+    [['tab',G.tab,'tab',6,'mod sm'],['q','Q',null,4],['w','W',null,4],['e','E',null,4],['r','R',null,4],
+     ['t','T',null,4],['y','Y',null,4],['u','U',null,4],['i','I',null,4],['o','O',null,4],
+     ['p','P',null,4],['[','[',null,4],[']',']',null,4],['\\','\\',null,6]],
+    // home — caps lock = hyperkey
+    [['caps',G.caps,'caps',7,'mod sm hyper'],['a','A',null,4],['s','S',null,4],['d','D',null,4],
+     ['f','F',null,4],['g','G',null,4],['h','H',null,4],['j','J',null,4],['k','K',null,4],
+     ['l','L',null,4],[';',';',null,4],["'","'",null,4],['ret',G.ret,'return',9,'mod sm ralign']],
+    // bottom
+    [['lshift',G.shift,'shift',9,'mod sm modkey'],['z','Z',null,4],['x','X',null,4],['c','C',null,4],
+     ['v','V',null,4],['b','B',null,4],['n','N',null,4],['m','M',null,4],[',',',',null,4],
+     ['.','.',null,4],['/','/',null,4],['rshift',G.shift,'shift',11,'mod sm modkey ralign']],
+    // modifiers + arrows
+    [['fn',G.globe,'fn',5,'mod sm modkey'],['ctrl','\u2303','ctrl',5,'mod sm modkey'],
+     ['opt','\u2325','opt',5,'mod sm modkey'],['cmd','\u2318','cmd',6,'mod sm modkey'],
+     ['space','',null,20,'mod'],['rcmd','\u2318','cmd',6,'mod sm modkey'],
+     ['ropt','\u2325','opt',5,'mod sm modkey'],['arrows','',null,8,'arrows']]
+  ];
+  const FN = ['esc','F1','F2','F3','F4','F5','F6','F7','F8','F9','F10','F11','F12'];
+
+  const el = (tag, cls, html) => { const n = document.createElement(tag); if (cls) n.className = cls; if (html != null) n.innerHTML = html; return n; };
+
+  function buildKeyboard(state, onChange, kopts) {
+    kopts = kopts || {};
+    const kb = el('div', 'ksv-kb' + (kopts.static ? ' ksv-static' : ''));
+
+    // function row
+    const fnRow = el('div', 'ksv-fnrow');
+    FN.forEach((c, i) => {
+      const k = el('button', 'ksv-key ksv-fn' + (i === 0 ? ' esc' : ''), c === 'esc' ? 'esc' : c);
+      k.dataset.code = c;
+      fnRow.appendChild(k);
+    });
+    kb.appendChild(fnRow);
+
+    // main rows
+    ROWS.forEach(row => {
+      const r = el('div', 'ksv-row');
+      row.forEach(([code, label, sub, span, cls]) => {
+        if (code === 'arrows') {
+          const wrap = el('div', 'ksv-arrows');
+          wrap.style.gridColumn = 'span ' + span;
+          const up = el('button', 'ksv-key ar up', G.up); up.dataset.code = 'up';
+          const lf = el('button', 'ksv-key ar lf', G.left); lf.dataset.code = 'left';
+          const dn = el('button', 'ksv-key ar dn', G.down); dn.dataset.code = 'down';
+          const rt = el('button', 'ksv-key ar rt', G.right); rt.dataset.code = 'right';
+          wrap.append(up, lf, dn, rt);
+          r.appendChild(wrap);
+          return;
+        }
+        const k = el('button', 'ksv-key ' + (cls || ''));
+        k.style.gridColumn = 'span ' + span;
+        k.dataset.code = code;
+        if (sub) k.innerHTML = '<span class="cap">' + label + '</span><span class="sub">' + sub + '</span>';
+        else k.textContent = label;
+        r.appendChild(k);
+      });
+      kb.appendChild(r);
+    });
+
+    if (!kopts.static) {
+      // single-click toggles a key; double-click on a modifier marks it "double-tap"
+      const doSingle = (code) => {
+        const lr = !!state.lr;
+        // a standalone double-tap shortcut resets on any normal click
+        if (state.dbl && state.dbl.size) {
+          const hitDoubled = state.dbl.has(code) || (!lr && PAIR[code] && state.dbl.has(PAIR[code]));
+          state.dbl = new Set();
+          state.sel = new Set();
+          if (hitDoubled) return;       // double-tapped key clicked again → cleared
+          // otherwise start a fresh selection with the clicked key
+        }
+        if (!lr && PAIR[code]) {
+          const partner = PAIR[code];
+          const on = state.sel.has(code) || state.sel.has(partner);
+          if (on) { state.sel.delete(code); state.sel.delete(partner); clearDbl(state, code); }
+          else {
+            if (logicalModCount(state) >= 4) return;
+            state.sel.add(code);
+          }
+        } else if (state.sel.has(code)) {
+          state.sel.delete(code); clearDbl(state, code);
+        } else {
+          if (MODS.has(code)) {
+            // distinguish L/R: only one side of a pair at a time
+            if (lr && PAIR[code] && state.sel.has(PAIR[code])) { state.sel.delete(PAIR[code]); clearDbl(state, PAIR[code]); }
+            const capsHyper = code === 'caps' && state.hyper;
+            if (!capsHyper && logicalModCount(state) >= 4) return;
+          } else {
+            [...state.sel].forEach(c => { if (!MODS.has(c)) state.sel.delete(c); });
+          }
+          state.sel.add(code);
+        }
+      };
+      const doDouble = (code) => {
+        // a double-tap is a standalone shortcut — it can't be combined with
+        // another double-tap or any other key, so clear everything else
+        const wasDoubled = state.dbl && (state.dbl.has(code) || (!state.lr && PAIR[code] && state.dbl.has(PAIR[code])));
+        state.sel = new Set();
+        state.dbl = new Set();
+        if (!wasDoubled) { state.sel.add(code); state.dbl.add(code); } // else → back to neutral
+      };
+      let pending = null;
+      kb.addEventListener('click', e => {
+        const k = e.target.closest('.ksv-key');
+        if (!k) return;
+        const code = k.dataset.code;
+        if (!code || code === 'space') return;
+        if (state.locked && state.locked.has(code)) return;
+        const commit = () => { paint(kb, state); onChange(); };
+        // keys with no double-tap meaning act immediately (activation keys + caps/hyper)
+        if (!DBLABLE.has(code)) { doSingle(code); commit(); return; }
+        // modifier: defer briefly to detect a second click (double-tap)
+        if (pending && pending.code === code) {
+          clearTimeout(pending.timer); pending = null;
+          doDouble(code); commit();
+          return;
+        }
+        if (pending) { clearTimeout(pending.timer); doSingle(pending.code); pending = null; }
+        pending = { code, timer: setTimeout(() => { pending = null; doSingle(code); commit(); }, 220) };
+      });
+    }
+
+    paint(kb, state);
+    return kb;
+  }
+
+  // non-interactive keyboard for export previews
+  function buildBoardPreview(state) {
+    return buildKeyboard(state, () => {}, { static: true });
+  }
+
+  function paint(kb, state) {
+    const lr = !!state.lr;
+    const atMax = logicalModCount(state) >= 4;
+    const isOn = (code) => state.sel.has(code) || (!lr && PAIR[code] && state.sel.has(PAIR[code]));
+    kb.querySelectorAll('.ksv-key').forEach(k => {
+      const code = k.dataset.code;
+      k.classList.toggle('on', !!isOn(code));
+      k.classList.toggle('dbl', !!(isOn(code) && isDbl(state, code)));
+      k.classList.toggle('locked', !!(state.locked && state.locked.has(code)));
+      const unselMod = MODS.has(code) && !isOn(code);
+      const capsEx = code === 'caps' && state.hyper;
+      k.classList.toggle('maxed', atMax && unselMod && !capsEx);
+    });
+  }
+
+  // produce ordered list of {label, sub} keycaps for the current selection
+  const ORDER = ['caps','fn','ctrl','opt','cmd','rcmd','ropt','lshift','rshift','tab','esc','del','ret'];
+  const LABELS = {
+    caps: ['\u2756', 'hyper'], ctrl: ['\u2303', null], opt: ['\u2325', null], cmd: ['\u2318', null],
+    rcmd: ['\u2318', null], ropt: ['\u2325', null], lshift: ['\u21E7', null], rshift: ['\u21E7', null],
+    tab: ['\u21E5', null], esc: ['esc', null], del: ['\u232B', null], ret: ['\u23CE', null],
+    up: ['\u25B2', null], down: ['\u25BC', null], left: ['\u25C0', null], right: ['\u25B6', null]
+  };
+  function caps(state) {
+    const lr = !!state.lr;
+    let selArr = [...state.sel];
+    if (!lr) {
+      // collapse linked L/R pairs to one canonical chip
+      const seen = new Set(), collapsed = [];
+      selArr.forEach(c => {
+        if (PAIR[c]) { const key = canon(c); if (seen.has(key)) return; seen.add(key); collapsed.push(key); }
+        else collapsed.push(c);
+      });
+      selArr = collapsed;
+    }
+    const mods = selArr.filter(c => ORDER.includes(c)).sort((a,b)=>ORDER.indexOf(a)-ORDER.indexOf(b));
+    const keys = selArr.filter(c => !ORDER.includes(c));
+    const out = [];
+    mods.forEach(c => {
+      let lab = LABELS[c] || [c];
+      const isHyper = c === 'caps' && !!state.hyper;
+      if (c === 'caps') lab = isHyper ? ['\u2756', 'hyper'] : ['\u21EA', 'caps'];
+      let sub = lab[1] || null;
+      if (lr && DIR[c]) sub = DIR[c];
+      out.push({ code: c, label: lab[0], sub, mod: true, hyper: isHyper, dbl: isDbl(state, c) });
+    });
+    keys.forEach(c => out.push({ code: c, label: (LABELS[c]||[c.toUpperCase()])[0], sub: null, mod: false }));
+    return out;
+  }
+
+  // render keycap chips into a container
+  function renderCaps(container, state, opts) {
+    container.innerHTML = '';
+    const list = caps(state);
+    if (!list.length) {
+      container.appendChild(el('div', 'ksv-empty', opts && opts.empty || 'Select keys to build a shortcut'));
+      return;
+    }
+    const row = el('div', 'ksv-capsrow');
+    list.forEach((c, i) => {
+      if (i) row.appendChild(el('span', 'ksv-plus', '+'));
+      const chip = el('span', 'ksv-chip' + (c.mod ? ' mod' : '') + (c.hyper ? ' hyper' : '') + (c.dbl ? ' dbl' : ''));
+      const glyph = c.code === 'fn' ? G.globe : c.label;
+      const isText = typeof glyph === 'string' && glyph.length > 1 && glyph[0] !== '<';
+      if (isText) chip.classList.add('txt');
+      if (!c.mod && c.code.length === 1 && !/[a-z0-9]/i.test(c.code)) chip.classList.add('sym');
+      chip.innerHTML = '<span class="g">' + glyph + '</span>' + (c.sub ? '<span class="s">' + c.sub + '</span>' : '') + (c.dbl ? '<span class="dbbadge">2</span>' : '');
+      row.appendChild(chip);
+    });
+    container.appendChild(row);
+  }
+
+  // geometry for a given key list at a given pixel scale
+  function geom(n, scale) {
+    const pad = 28 * scale, gap = 14 * scale, plus = 22 * scale;
+    const kw = 92 * scale, kh = 92 * scale, r = 16 * scale;
+    const w = Math.round(pad * 2 + n * kw + (n - 1) * (gap * 2 + plus));
+    const h = Math.round(pad * 2 + kh);
+    return { pad, gap, plus, kw, kh, r, w, h };
+  }
+
+  // output pixel dimensions for the current selection at a scale (1 = base @1x)
+  function exportSize(state, scale) {
+    const n = caps(state).length;
+    if (!n) return null;
+    const g = geom(n, scale || 1);
+    return { w: g.w, h: g.h, keys: n };
+  }
+
+  const MIME = { png: 'image/png', jpg: 'image/jpeg', webp: 'image/webp' };
+
+  // export — png / jpg / webp (raster) or svg (vector), at a pixel scale
+  function exportPNG(state, opts) {
+    opts = opts || {};
+    const list = caps(state);
+    if (!list.length) return;
+    const fmt = opts.format || 'png';
+    const fname = 'shortcut-' + list.map(c => c.code).join('-');
+    if (fmt === 'svg') { downloadSVG(list, opts, fname); return; }
+
+    const scale = opts.scale || 2;
+    const g = geom(list.length, scale);
+    const cv = document.createElement('canvas'); cv.width = g.w; cv.height = g.h;
+    const ctx = cv.getContext('2d');
+    // jpg can't be transparent — fall back to the bg color (or dark)
+    const bg = opts.bg === 'transparent'
+      ? (fmt === 'jpg' ? (opts.jpgBg || '#0a0b0d') : null)
+      : (opts.bg || '#0c0d10');
+    if (bg) { ctx.fillStyle = bg; ctx.fillRect(0, 0, g.w, g.h); }
+    let x = g.pad;
+    list.forEach((c, i) => {
+      if (i) {
+        ctx.fillStyle = opts.plus || '#5b6472';
+        ctx.font = 600 + ' ' + (34 * scale) + 'px ui-sans-serif, system-ui, sans-serif';
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillText('+', x + g.gap + g.plus / 2, g.pad + g.kh / 2);
+        x += g.gap * 2 + g.plus;
+      }
+      const accent = c.hyper ? (opts.hyper || '#5b8cff') : null;
+      const fill = accent || opts.keyBg || '#1b1e24';
+      roundRect(ctx, x, g.pad, g.kw, g.kh, g.r); ctx.fillStyle = fill; ctx.fill();
+      ctx.strokeStyle = accent ? 'rgba(255,255,255,.25)' : (opts.keyBorder || 'rgba(255,255,255,.10)');
+      ctx.lineWidth = 1.5 * scale; ctx.stroke();
+      ctx.fillStyle = accent ? (opts.hyperFg || '#fff') : (opts.fg || '#e8eaed');
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      const single = c.label.length <= 2;
+      ctx.font = 600 + ' ' + (single ? 44 : 26) * scale + 'px ui-sans-serif, system-ui, sans-serif';
+      ctx.fillText(c.label, x + g.kw / 2, g.pad + g.kh / 2 + (c.sub ? -8 * scale : 0));
+      if (c.sub) {
+        ctx.font = 500 + ' ' + 16 * scale + 'px ui-sans-serif, system-ui, sans-serif';
+        ctx.fillStyle = accent ? 'rgba(255,255,255,.8)' : (opts.sub || '#8b93a1');
+        ctx.fillText(c.sub, x + g.kw / 2, g.pad + g.kh / 2 + 22 * scale);
+      }
+      if (c.dbl) {
+        const br = 15 * scale, bx = x + g.kw - br * 0.55, by = g.pad + br * 0.55;
+        ctx.beginPath(); ctx.arc(bx, by, br, 0, Math.PI * 2);
+        ctx.fillStyle = opts.accent || opts.hyper || '#b7ff4a'; ctx.fill();
+        ctx.lineWidth = 2 * scale; ctx.strokeStyle = bg || '#0a0b0d'; ctx.stroke();
+        ctx.fillStyle = opts.hyperFg || '#0a0b0d';
+        ctx.font = 700 + ' ' + 17 * scale + 'px ui-sans-serif, system-ui, sans-serif';
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillText('2', bx, by + scale);
+      }
+      x += g.kw;
+    });
+    download(fname + '.' + fmt, cv.toDataURL(MIME[fmt] || 'image/png', 0.95));
+  }
+
+  // vector SVG export — scale-independent
+  function downloadSVG(list, opts, fname) {
+    const s = 1, g = geom(list.length, s);
+    const esc = t => String(t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    const parts = [];
+    const bg = opts.bg === 'transparent' ? null : (opts.bg || '#0c0d10');
+    if (bg) parts.push('<rect width="' + g.w + '" height="' + g.h + '" fill="' + bg + '"/>');
+    let x = g.pad;
+    list.forEach((c, i) => {
+      if (i) {
+        parts.push('<text x="' + (x + g.gap + g.plus / 2) + '" y="' + (g.pad + g.kh / 2) +
+          '" font-size="34" font-weight="600" fill="' + (opts.plus || '#5b6472') +
+          '" text-anchor="middle" dominant-baseline="central" font-family="' + UIFONT + '">+</text>');
+        x += g.gap * 2 + g.plus;
+      }
+      const accent = c.hyper ? (opts.hyper || '#5b8cff') : null;
+      const fill = accent || opts.keyBg || '#1b1e24';
+      const stroke = accent ? 'rgba(255,255,255,.25)' : (opts.keyBorder || 'rgba(255,255,255,.10)');
+      parts.push('<rect x="' + x + '" y="' + g.pad + '" width="' + g.kw + '" height="' + g.kh +
+        '" rx="' + g.r + '" fill="' + fill + '" stroke="' + stroke + '" stroke-width="1.5"/>');
+      const single = c.label.length <= 2;
+      const ty = g.pad + g.kh / 2 + (c.sub ? -8 : 0);
+      parts.push('<text x="' + (x + g.kw / 2) + '" y="' + ty + '" font-size="' + (single ? 44 : 26) +
+        '" font-weight="600" fill="' + (accent ? (opts.hyperFg || '#fff') : (opts.fg || '#e8eaed')) +
+        '" text-anchor="middle" dominant-baseline="central" font-family="' + UIFONT + '">' + esc(c.label) + '</text>');
+      if (c.sub) {
+        parts.push('<text x="' + (x + g.kw / 2) + '" y="' + (g.pad + g.kh / 2 + 22) + '" font-size="16" font-weight="500" fill="' +
+          (accent ? 'rgba(255,255,255,.8)' : (opts.sub || '#8b93a1')) +
+          '" text-anchor="middle" dominant-baseline="central" font-family="' + UIFONT + '">' + esc(c.sub) + '</text>');
+      }
+      if (c.dbl) {
+        const br = 15, bx = x + g.kw - br * 0.55, by = g.pad + br * 0.55;
+        const badgeBg = opts.bg === 'transparent' ? '#0a0b0d' : (opts.bg || '#0c0d10');
+        parts.push('<circle cx="' + bx + '" cy="' + by + '" r="' + br + '" fill="' + (opts.accent || opts.hyper || '#b7ff4a') + '" stroke="' + badgeBg + '" stroke-width="2"/>');
+        parts.push('<text x="' + bx + '" y="' + by + '" font-size="17" font-weight="700" fill="' + (opts.hyperFg || '#0a0b0d') +
+          '" text-anchor="middle" dominant-baseline="central" font-family="' + UIFONT + '">2</text>');
+      }
+      x += g.kw;
+    });
+    const svg = '<svg xmlns="http://www.w3.org/2000/svg" width="' + g.w + '" height="' + g.h +
+      '" viewBox="0 0 ' + g.w + ' ' + g.h + '">' + parts.join('') + '</svg>';
+    download(fname + '.svg', 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg));
+  }
+  const UIFONT = "Inter, ui-sans-serif, system-ui, sans-serif";
+
+  function download(name, href) {
+    const a = document.createElement('a');
+    a.download = name; a.href = href; a.click();
+  }
+
+  /* ---- full-keyboard export ("key press on the actual layout") ---- */
+  const BOARD = { pad: 44, g: 8, keyH: 64, rowGap: 8, r: 9, fnH: 40, fnGap: 14, cols: 60, innerW: 1180 };
+  function boardDims(scale) {
+    const b = BOARD;
+    const W = b.innerW + b.pad * 2;
+    const H = b.pad * 2 + b.fnH + b.fnGap + 5 * b.keyH + 4 * b.rowGap;
+    return { W, H, w: Math.round(W * scale), h: Math.round(H * scale) };
+  }
+  function boardSize(scale) { const d = boardDims(scale || 1); return { w: d.w, h: d.h, keys: 0 }; }
+
+  function bkey(ctx, x, y, w, h, r, on, accent, onFg, opts, label, fontSize) {
+    roundRect(ctx, x, y, w, h, r);
+    ctx.fillStyle = on ? accent : (opts.keyBg || '#131519'); ctx.fill();
+    ctx.strokeStyle = on ? 'rgba(255,255,255,.22)' : (opts.keyBorder || 'rgba(255,255,255,.08)');
+    ctx.lineWidth = 1; ctx.stroke();
+    if (label) {
+      ctx.fillStyle = on ? onFg : (opts.fg || '#d7dbe0');
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.font = '600 ' + fontSize + 'px ' + UIFONT;
+      ctx.fillText(label, x + w / 2, y + h / 2 + 1);
+    }
+  }
+
+  function exportBoard(state, opts) {
+    opts = opts || {};
+    const b = BOARD;
+    const fmt = opts.format === 'svg' ? 'png' : (opts.format || 'png');
+    const scale = opts.scale || 2;
+    const sel = state.sel;
+    const d = boardDims(scale);
+    const cv = document.createElement('canvas'); cv.width = d.w; cv.height = d.h;
+    const ctx = cv.getContext('2d'); ctx.scale(scale, scale);
+    const bg = opts.bg === 'transparent'
+      ? (fmt === 'jpg' ? (opts.jpgBg || '#0a0b0d') : null)
+      : (opts.bg || '#0a0b0d');
+    if (bg) { ctx.fillStyle = bg; ctx.fillRect(0, 0, d.W, d.H); }
+    const accent = opts.accent || opts.hyper || '#b7ff4a';
+    const onFg = opts.hyperFg || '#0a0b0d';
+    const colW = (b.innerW - (b.cols - 1) * b.g) / b.cols;
+
+    // function row
+    let y = b.pad;
+    const fnUnits = 13.6, fnColW = (b.innerW - 12 * b.g) / fnUnits;
+    let fx = b.pad;
+    FN.forEach((c, i) => {
+      const w = (i === 0 ? 1.6 : 1) * fnColW;
+      bkey(ctx, fx, y, w, b.fnH, b.r - 2, sel.has(c), accent, onFg, opts, c === 'esc' ? 'esc' : c, 13);
+      fx += w + b.g;
+    });
+    y += b.fnH + b.fnGap;
+
+    // main rows
+    ROWS.forEach(row => {
+      let x = b.pad;
+      row.forEach(cell => {
+        const [code, label, sub, span] = cell;
+        const w = span * colW + (span - 1) * b.g;
+        if (code === 'arrows') {
+          const colw = (w - 2 * b.g) / 3, cellH = (b.keyH - b.g) / 2;
+          bkey(ctx, x + colw + b.g, y, colw, cellH, 6, sel.has('up'), accent, onFg, opts, G.up, 12);
+          bkey(ctx, x, y + cellH + b.g, colw, cellH, 6, sel.has('left'), accent, onFg, opts, G.left, 12);
+          bkey(ctx, x + colw + b.g, y + cellH + b.g, colw, cellH, 6, sel.has('down'), accent, onFg, opts, G.down, 12);
+          bkey(ctx, x + 2 * (colw + b.g), y + cellH + b.g, colw, cellH, 6, sel.has('right'), accent, onFg, opts, G.right, 12);
+        } else if (code === 'space') {
+          bkey(ctx, x, y, w, b.keyH, b.r, sel.has('space'), accent, onFg, opts, '', 20);
+        } else {
+          bkey(ctx, x, y, w, b.keyH, b.r, sel.has(code), accent, onFg, opts, label, span <= 4 ? 21 : 15);
+          if (isDbl(state, code) && (sel.has(code) || isDbl(state, code))) {
+            const br = 11, bx = x + w - br * 0.5, by = y + br * 0.5;
+            ctx.beginPath(); ctx.arc(bx, by, br, 0, Math.PI * 2);
+            ctx.fillStyle = accent; ctx.fill();
+            ctx.lineWidth = 1.5; ctx.strokeStyle = bg || '#0a0b0d'; ctx.stroke();
+            ctx.fillStyle = onFg; ctx.font = '700 13px ' + UIFONT;
+            ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+            ctx.fillText('2', bx, by + 0.5);
+          }
+        }
+        x += w + b.g;
+      });
+      y += b.keyH + b.rowGap;
+    });
+    download('shortcut-keyboard.' + fmt, cv.toDataURL(MIME[fmt] || 'image/png', 0.95));
+  }
+
+  window.KSV = { buildKeyboard, buildBoardPreview, renderCaps, caps, exportPNG, exportBoard, exportSize, boardSize, paint, HYPER, G };
+  function roundRect(ctx, x, y, w, h, r) {
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.arcTo(x + w, y, x + w, y + h, r);
+    ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r);
+    ctx.arcTo(x, y, x + w, y, r);
+    ctx.closePath();
+  }
+})();
