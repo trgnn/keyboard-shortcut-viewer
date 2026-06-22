@@ -5,6 +5,7 @@
   'use strict';
 
   /* ---- config ---- */
+  const COLS = KSV.COLS; // keyboard grid width (shared with the engine/export)
   const ACCENTS = ['#22d3ee', '#ff7a1a', '#9d4bff', '#ff3d8b', '#b7ff4a'];
   const HYPER_OPTS = [['off', 'off'], ['caom', '⌃⌥⌘'], ['scaom', '⇧⌃⌥⌘']];
   const HYPER_LOCK = {
@@ -39,12 +40,37 @@
   const preview = $('preview');
   const sizeCap = $('sizeCap');
   const downloadBtn = $('downloadBtn');
+  const favicon = document.querySelector('link[rel="icon"]');
 
   /* ---- state ---- */
   // engine state (shared with KSV)
   const state = { sel: new Set(['cmd', 'k']), dbl: new Set(), lr: false, hyper: false, locked: new Set() };
   // UI state
-  const ui = { layout: 'keycaps', bg: 'dark', ext: 'png', scale: 2, accent: ACCENTS[0], hyper: 'off', lr: false };
+  const ui = { layout: 'board', bg: 'dark', ext: 'jpg', scale: 2, accent: ACCENTS[0], hyper: 'off', lr: false };
+
+  /* ---- persistence: remember UI options across reloads (NOT the key selection) ---- */
+  const STORE = 'ksv-ui-v1';
+  function persist() {
+    try {
+      localStorage.setItem(STORE, JSON.stringify({
+        layout: ui.layout, bg: ui.bg, ext: ui.ext, accent: ui.accent, hyper: ui.hyper, lr: ui.lr
+      }));
+    } catch (e) { /* storage unavailable (private mode, etc.) — just don't persist */ }
+  }
+  function restore() {
+    let s;
+    try { s = JSON.parse(localStorage.getItem(STORE) || '{}'); } catch (e) { return; }
+    if (!s || typeof s !== 'object') return;
+    if (LAYOUTS.includes(s.layout)) ui.layout = s.layout;
+    if (['dark', 'light', 'trans'].includes(s.bg)) ui.bg = s.bg;
+    if (['png', 'jpg', 'webp', 'svg'].includes(s.ext)) ui.ext = s.ext;
+    if (ACCENTS.includes(s.accent)) ui.accent = s.accent;
+    if (['off', 'caom', 'scaom'].includes(s.hyper)) ui.hyper = s.hyper;
+    if (typeof s.lr === 'boolean') ui.lr = s.lr;
+    // re-apply the guards the change handlers enforce, in case of an invalid saved combo
+    if (ui.layout === 'board' && ui.ext === 'svg') ui.ext = 'png';
+    if (ui.ext === 'jpg' && ui.bg === 'trans') ui.bg = 'dark';
+  }
 
   /* ---- small helpers ---- */
   const el = (tag, cls, html) => { const n = document.createElement(tag); if (cls) n.className = cls; if (html != null) n.innerHTML = html; return n; };
@@ -94,7 +120,7 @@
       preview.appendChild(board);
       const aw = Math.max(120, preview.clientWidth - 28);
       const g = Math.max(2, aw / 1100 * 7);
-      const colW = (aw - 57 * g) / 58;
+      const colW = (aw - (COLS - 1) * g) / COLS;
       const kh = Math.max(12, 4 * colW + 3 * g); // square letter keys, matching the export
       board.style.setProperty('--keyH', kh + 'px');
       board.style.setProperty('--g', g + 'px');
@@ -127,6 +153,7 @@
     updateCapsKey();
     updatePreview();
     updateMeta();
+    persist();
   }
 
   /* ---- segmented controls ---- */
@@ -137,7 +164,7 @@
     renderSeg($('lrSeg'), [['off', 'off'], ['on', 'on']], ui.lr ? 'on' : 'off', false, (v) => setLr(v === 'on'));
   }
   function renderLayout() {
-    renderSeg($('layoutSeg'), [['keycaps', 'keycaps'], ['board', 'keyboard']], ui.layout, false, changeLayout);
+    renderSeg($('layoutSeg'), [['board', 'keyboard'], ['keycaps', 'keycaps<span class="seg-beta">beta</span>']], ui.layout, false, changeLayout);
   }
   function renderExt() {
     const list = (ui.layout === 'board' ? ['png', 'jpg', 'webp'] : ['png', 'jpg', 'webp', 'svg']).map((f) => [f, f]);
@@ -160,7 +187,7 @@
   }
 
   /* ---- handlers ---- */
-  const LAYOUTS = ['keycaps', 'board'];
+  const LAYOUTS = ['board', 'keycaps'];
   function changeLayout(v) {
     ui.layout = v;
     if (v === 'board' && ui.ext === 'svg') ui.ext = 'png';
@@ -175,10 +202,19 @@
     renderExt(); renderBgSeg(); refresh();
   }
   function setBg(v) { ui.bg = v; renderBgSeg(); refresh(); }
+  // favicon follows the accent: a keycap outline drawn in the current accent colour
+  function setFavicon(hex) {
+    if (!favicon) return;
+    const svg = "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'>"
+      + "<rect width='32' height='32' rx='7' fill='#0a0b0d'/>"
+      + "<rect x='7' y='7' width='18' height='18' rx='4' fill='none' stroke='" + hex + "' stroke-width='2.2'/></svg>";
+    favicon.href = 'data:image/svg+xml,' + encodeURIComponent(svg);
+  }
   function setAccent(hex) {
     ui.accent = hex;
     root.style.setProperty('--accent', hex);
     root.style.setProperty('--onFg', fgFor(hex));
+    setFavicon(hex);
     renderSwatches(); refresh();
   }
   function setLr(on) {
@@ -213,7 +249,7 @@
     const W = kb.clientWidth;
     if (!W) return;
     const g = parseFloat(getComputedStyle(kb).getPropertyValue('--g')) || 6;
-    const colW = (W - 57 * g) / 58;
+    const colW = (W - (COLS - 1) * g) / COLS;
     const unit = 4 * colW + 3 * g;
     kb.style.setProperty('--keyH', unit + 'px'); // fn keys share this height (square, like the letters)
   }
@@ -262,6 +298,7 @@
 
   /* ---- init ---- */
   function init() {
+    restore(); // load saved UI options; the key selection stays at its default
     state.lr = ui.lr;
     setAccent(ui.accent); // sets root --accent/--onFg
 

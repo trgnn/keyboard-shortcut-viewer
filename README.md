@@ -34,4 +34,4 @@ python3 -m http.server 8123
 
 ## Shortcuts
 - **Click** a key to toggle it · **double-click** a modifier for a double-tap shortcut.
-- **⇧R** clear keys · **⇧D** download.
+- **⇧R** clear keys · **⇧L** change layout · **⇧D** download.

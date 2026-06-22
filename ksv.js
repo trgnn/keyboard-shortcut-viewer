@@ -9,6 +9,10 @@
     up: '\u25B2', down: '\u25BC', left: '\u25C0', right: '\u25B6',
     esc: 'esc'
   };
+  // UI font stack, shared by the DOM (--ui) and every canvas/SVG exporter
+  const UIFONT = "-apple-system, 'SF Pro Display', ui-sans-serif, system-ui, sans-serif";
+  // keyboard grid width in columns \u2014 one source for the layout, the export, and app.js sizing
+  const COLS = 58;
   // The hyperkey: Caps Lock remapped to Control+Option+Command. (mods, no shift)
   const HYPER = ['ctrl', 'opt', 'cmd'];
   // true modifier keys — any number can be held; everything else is a single "activation" key
@@ -321,6 +325,11 @@
     container.appendChild(row);
   }
 
+  // TODO (post-MVP): the keycap-chip export below (geom + exportPNG/downloadSVG) is a
+  // standalone hardcoded design — not yet wired to KEYSPEC/ONSTATE like the board path.
+  // It matches the chip preview in *content* (both use caps()) but not via a shared
+  // style source, so restyling the chips can drift from their export. Unify it the same
+  // way the board renderer was unified.
   // geometry for a given key list at a given pixel scale
   function geom(n, scale) {
     const pad = 28 * scale, gap = 14 * scale, plus = 22 * scale;
@@ -362,7 +371,7 @@
     list.forEach((c, i) => {
       if (i) {
         ctx.fillStyle = opts.plus || '#5b6472';
-        ctx.font = 600 + ' ' + (34 * scale) + 'px ui-sans-serif, system-ui, sans-serif';
+        ctx.font = 600 + ' ' + (34 * scale) + 'px ' + UIFONT;
         ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
         ctx.fillText('+', x + g.gap + g.plus / 2, g.pad + g.kh / 2);
         x += g.gap * 2 + g.plus;
@@ -375,20 +384,20 @@
       ctx.fillStyle = accent ? (opts.hyperFg || '#fff') : (opts.fg || '#e8eaed');
       ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
       const single = c.label.length <= 2;
-      ctx.font = 600 + ' ' + (single ? 44 : 26) * scale + 'px ui-sans-serif, system-ui, sans-serif';
+      ctx.font = 600 + ' ' + (single ? 44 : 26) * scale + 'px ' + UIFONT;
       ctx.fillText(c.label, x + g.kw / 2, g.pad + g.kh / 2 + (c.sub ? -8 * scale : 0));
       if (c.sub) {
-        ctx.font = 500 + ' ' + 16 * scale + 'px ui-sans-serif, system-ui, sans-serif';
+        ctx.font = 500 + ' ' + 16 * scale + 'px ' + UIFONT;
         ctx.fillStyle = accent ? 'rgba(255,255,255,.8)' : (opts.sub || '#8b93a1');
         ctx.fillText(c.sub, x + g.kw / 2, g.pad + g.kh / 2 + 22 * scale);
       }
       if (c.dbl) {
         const br = 15 * scale, bx = x + g.kw - br * 0.55, by = g.pad + br * 0.55;
         ctx.beginPath(); ctx.arc(bx, by, br, 0, Math.PI * 2);
-        ctx.fillStyle = opts.accent || opts.hyper || '#b7ff4a'; ctx.fill();
+        ctx.fillStyle = opts.accent || opts.hyper || '#22d3ee'; ctx.fill();
         ctx.lineWidth = 2 * scale; ctx.strokeStyle = bg || '#0a0b0d'; ctx.stroke();
         ctx.fillStyle = opts.hyperFg || '#0a0b0d';
-        ctx.font = 700 + ' ' + 17 * scale + 'px ui-sans-serif, system-ui, sans-serif';
+        ctx.font = 700 + ' ' + 17 * scale + 'px ' + UIFONT;
         ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
         ctx.fillText('2', bx, by + scale);
       }
@@ -430,7 +439,7 @@
       if (c.dbl) {
         const br = 15, bx = x + g.kw - br * 0.55, by = g.pad + br * 0.55;
         const badgeBg = opts.bg === 'transparent' ? '#0a0b0d' : (opts.bg || '#0c0d10');
-        parts.push('<circle cx="' + bx + '" cy="' + by + '" r="' + br + '" fill="' + (opts.accent || opts.hyper || '#b7ff4a') + '" stroke="' + badgeBg + '" stroke-width="2"/>');
+        parts.push('<circle cx="' + bx + '" cy="' + by + '" r="' + br + '" fill="' + (opts.accent || opts.hyper || '#22d3ee') + '" stroke="' + badgeBg + '" stroke-width="2"/>');
         parts.push('<text x="' + bx + '" y="' + by + '" font-size="17" font-weight="700" fill="' + (opts.hyperFg || '#0a0b0d') +
           '" text-anchor="middle" dominant-baseline="central" font-family="' + UIFONT + '">2</text>');
       }
@@ -440,8 +449,6 @@
       '" viewBox="0 0 ' + g.w + ' ' + g.h + '">' + parts.join('') + '</svg>';
     download(fname + '.svg', 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg));
   }
-  const UIFONT = "-apple-system, 'SF Pro Display', ui-sans-serif, system-ui, sans-serif";
-
   function download(name, href) {
     const a = document.createElement('a');
     a.download = name; a.href = href; a.click();
@@ -457,7 +464,7 @@
   }
 
   /* ---- full-keyboard export ("key press on the actual layout") ---- */
-  const BOARD = { pad: 44, g: 8, rowGap: 8, cols: 58, innerW: 1180 };
+  const BOARD = { pad: 44, g: 8, rowGap: 8, cols: COLS, innerW: 1180 };
   function boardDims(scale) {
     const b = BOARD;
     const colW = (b.innerW - (b.cols - 1) * b.g) / b.cols;
@@ -487,7 +494,8 @@
       const grad = ctx.createLinearGradient(x, y, x + w, y + h);
       grad.addColorStop(0, hexA(accent, O.ringFrom)); grad.addColorStop(O.ringStop, hexA(accent, O.ringTo));
       ctx.save(); roundRect(ctx, x, y, w, h, r); ctx.clip();
-      ctx.fillStyle = grad; ctx.fillRect(x, y, w, h);                       // gradient base
+      ctx.fillStyle = opts.keyBg || '#131519'; ctx.fillRect(x, y, w, h);    // solid key base behind the gradients
+      ctx.fillStyle = grad; ctx.fillRect(x, y, w, h);                       // accent gradient
       ctx.globalAlpha = O.fill; ctx.fillStyle = accent; ctx.fillRect(x, y, w, h); // flat accent wash on top
       ctx.restore();
       ctx.save(); ctx.shadowColor = hexA(accent, O.glow); ctx.shadowBlur = h * 0.18;
@@ -560,7 +568,7 @@
       ? (fmt === 'jpg' ? (opts.jpgBg || '#0a0b0d') : null)
       : (opts.bg || '#0a0b0d');
     if (bg) { ctx.fillStyle = bg; ctx.fillRect(0, 0, d.W, d.H); }
-    const accent = opts.accent || opts.hyper || '#b7ff4a';
+    const accent = opts.accent || opts.hyper || '#22d3ee';
 
     // function row — esc (wide) + F1..F12 (square) + a blank Touch ID square at the far right
     let y = b.pad;
@@ -640,7 +648,7 @@
     download(exportName('board', caps(state), opts.bgName) + '.' + fmt, cv.toDataURL(MIME[fmt] || 'image/png', 0.95));
   }
 
-  window.KSV = { buildKeyboard, buildBoardPreview, renderCaps, caps, exportPNG, exportBoard, exportSize, boardSize, paint, HYPER, G, KEYBG };
+  window.KSV = { buildKeyboard, buildBoardPreview, renderCaps, caps, exportPNG, exportBoard, exportSize, boardSize, paint, HYPER, G, KEYBG, COLS };
   function roundRect(ctx, x, y, w, h, r) {
     ctx.beginPath();
     ctx.moveTo(x + r, y);

@@ -76,6 +76,9 @@
     linear-gradient(135deg,
       color-mix(in oklab, var(--accent) calc(var(--on-ring-from, 0.72) * 100%), transparent),
       color-mix(in oklab, var(--accent) calc(var(--on-ring-to, 0.16) * 100%), transparent) var(--on-ring-stop, 75%)) border-box;
+  /* solid key surface behind the translucent accent layers (matches the idle key);
+     each surface supplies its own --keyBg — solid on the preview/export, frosted on the selector */
+  background-color: var(--keyBg);
 }
 /* glow geometry is per-surface (the selector tracks the cursor; the preview is
    static) but its accent opacity is shared via --on-glow */
@@ -120,12 +123,12 @@
 .opt-d {
   --ui: -apple-system, 'SF Pro Display', ui-sans-serif, system-ui, sans-serif;
   --mono: 'JetBrains Mono', ui-monospace, 'SF Mono', monospace;
-  --accent: #b7ff4a; --onFg: #0a0b0d;
-  --keyBg: #131519; --keyFg: #d7dbe0; --keyBorder: #23262d; --keyR: 7px;
-  --hyperBg: #15181d; --hyperBorder: #2f3a1e; --hyperFg: #9bb86a;
-  --chipBg: #131519; --chipFg: #e6eaef; --chipBorder: #23262d; --muted: #5a616b;
-  --onGlow: 0 4px 18px -6px color-mix(in oklab, var(--accent) 60%, transparent);
+  --accent: #22d3ee; --onFg: #0a0b0d;
+  --keyFg: #d7dbe0; --keyBorder: #23262d;
+  /* translucent so the live keys read frosted over the panel; the flat export and
+     its preview use the solid colour instead (KSV.KEYBG, applied via applySpec) */
   --keyBg: rgba(19,21,25,0.6);
+  --chipBg: #131519; --chipFg: #e6eaef; --chipBorder: #23262d; --muted: #5a616b;
   background: #0a0b0d; color: #d7dbe0;
   position: relative;
   /* desktop-only: never let the layout cram below this — narrower viewports scroll horizontally */
@@ -207,6 +210,7 @@
 .opt-d .seg button { height: 27px; padding: 0 11px; border: none; background: none; border-radius: 5px; font: 600 11.5px/1 var(--mono); color: #8a93a0; cursor: pointer; text-transform: lowercase; }
 .opt-d .seg button.on { background: var(--accent); color: var(--onFg, #0a0b0d); }
 .opt-d .seg button:not(.on):not(.is-off):hover { background: #1b1f25; color: #cfd4da; }
+.opt-d .seg-beta { margin-left: 5px; padding: 0 4px; border: 1px solid currentColor; border-radius: 3px; font-size: 8.5px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; opacity: .65; vertical-align: middle; }
 .opt-d .seg button.is-off { opacity: .3; cursor: not-allowed; }
 .opt-d .seg.disabled { opacity: .42; }
 .opt-d .seg.disabled button { cursor: not-allowed; }
