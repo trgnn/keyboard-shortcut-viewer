@@ -118,7 +118,7 @@
   /* desktop-only: never let the layout cram below this — narrower viewports scroll horizontally */
   min-width: 1120px;
   /* rail grows gently on large screens, the stage (1fr) takes the rest */
-  display: grid; grid-template-columns: 1fr clamp(356px, 22vw, 420px);
+  display: grid; grid-template-columns: 1fr 300px;
   /* content max-width that the stage column centers around (see .head / .kb-wrap / .d-footer) */
   --content-max: 1180px;
 }
