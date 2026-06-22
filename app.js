@@ -158,10 +158,14 @@
   }
 
   /* ---- handlers ---- */
+  const LAYOUTS = ['keycaps', 'board'];
   function changeLayout(v) {
     ui.layout = v;
     if (v === 'board' && ui.ext === 'svg') ui.ext = 'png';
     renderLayout(); renderExt(); renderBgSeg(); refresh();
+  }
+  function cycleLayout() {
+    changeLayout(LAYOUTS[(LAYOUTS.indexOf(ui.layout) + 1) % LAYOUTS.length]);
   }
   function changeExt(v) {
     ui.ext = v;
@@ -241,7 +245,7 @@
     root.addEventListener('mouseleave', onLeave);
   }
 
-  /* ---- app hotkeys: ⇧D download, ⇧R reset (physical keys never activate keys) ---- */
+  /* ---- app hotkeys: ⇧R reset, ⇧L change layout, ⇧D download (physical keys never activate keys) ---- */
   function bindHotkeys() {
     window.addEventListener('keydown', (e) => {
       if (e.repeat) return;
@@ -250,6 +254,7 @@
       if (!e.shiftKey || e.metaKey || e.ctrlKey || e.altKey) return;
       if (e.code === 'KeyD') { e.preventDefault(); exportNow(); }
       else if (e.code === 'KeyR') { e.preventDefault(); reset(); }
+      else if (e.code === 'KeyL') { e.preventDefault(); cycleLayout(); }
     });
   }
 
