@@ -96,7 +96,7 @@
       const kh = Math.max(12, 4 * colW + 3 * g); // square letter keys, matching the export
       board.style.setProperty('--keyH', kh + 'px');
       board.style.setProperty('--g', g + 'px');
-      board.style.fontSize = Math.max(4, kh * 0.271) + 'px';
+      // labels size from --keyH via the shared KEYSPEC ratios (no per-view font tuning)
       updateCapsKey(board); // reflect the hyperkey glyph in the preview too
     } else {
       preview.classList.remove('is-board');

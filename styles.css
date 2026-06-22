@@ -20,16 +20,18 @@
 .ksv-key {
   position: relative; box-sizing: border-box;
   border: 1px solid var(--keyBorder); background: var(--keyBg); color: var(--keyFg);
-  border-radius: var(--keyR, 9px); height: var(--keyH, 58px);
+  /* key geometry derives from --keyH via the KEYSPEC ratios (see ksv.js applySpec);
+     fallbacks here mirror KEYSPEC so the stylesheet is still correct on its own */
+  border-radius: calc(var(--keyH, 56px) * var(--r-radius, 0.125)); height: var(--keyH, 58px);
   display: flex; align-items: center; justify-content: center;
-  font: 400 max(19px, calc(var(--keyH, 56px) * 0.340))/1 var(--ui); cursor: pointer; user-select: none; padding: 0;
+  font: 400 max(var(--fmin-letter, 19px), calc(var(--keyH, 56px) * var(--r-letter, 0.340)))/1 var(--ui); cursor: pointer; user-select: none; padding: 0;
   transition: transform .05s ease;
 }
-.ksv-fn { font-size: max(13px, calc(var(--keyH, 56px) * 0.232)); }
-.ksv-fn.esc { flex-direction: column; align-items: flex-start; justify-content: flex-end; padding: 8px 9px; }
-.ksv-fn.esc .sub { font-size: max(11px, calc(var(--keyH, 56px) * 0.196)); font-weight: 500; letter-spacing: .01em; color: var(--keyFg); }
-.ksv-key.sm { flex-direction: column; align-items: flex-start; justify-content: space-between; padding: 8px 9px; font-size: max(13px, calc(var(--keyH, 56px) * 0.232)); }
-.ksv-key.sm .cap { font-size: max(15px, calc(var(--keyH, 56px) * 0.268)); line-height: 1; color: var(--keyFg); }
+.ksv-fn { font-size: max(var(--fmin-fn, 13px), calc(var(--keyH, 56px) * var(--r-fn, 0.232))); }
+.ksv-fn.esc { flex-direction: column; align-items: flex-start; justify-content: flex-end; padding: calc(var(--keyH, 56px) * var(--r-pady, 0.143)) calc(var(--keyH, 56px) * var(--r-padx, 0.161)); }
+.ksv-fn.esc .sub { font-size: max(var(--fmin-sub, 11px), calc(var(--keyH, 56px) * var(--r-sub, 0.196))); font-weight: 500; letter-spacing: .01em; color: var(--keyFg); }
+.ksv-key.sm { flex-direction: column; align-items: flex-start; justify-content: space-between; padding: calc(var(--keyH, 56px) * var(--r-pady, 0.143)) calc(var(--keyH, 56px) * var(--r-padx, 0.161)); font-size: max(var(--fmin-fn, 13px), calc(var(--keyH, 56px) * var(--r-fn, 0.232))); }
+.ksv-key.sm .cap { font-size: max(var(--fmin-glyph, 15px), calc(var(--keyH, 56px) * var(--r-glyph, 0.268))); line-height: 1; color: var(--keyFg); }
 .ksv-key.sm.ralign { align-items: flex-end; text-align: right; }
 /* fn key (like a real Mac): globe icon bottom-left, "fn" text top-right */
 .ksv-key.sm.fnkey { flex-direction: column; justify-content: space-between; }
@@ -37,7 +39,7 @@
 .ksv-key.sm.fnkey .sub { order: 1; align-self: flex-end; }
 .ic { display: block; }
 .ksv-key.modkey:not(.on) .cap, .ksv-key.hyper:not(.on) .cap { color: var(--accent); }
-.ksv-key.sm .sub { font-size: max(11px, calc(var(--keyH, 56px) * 0.196)); font-weight: 500; letter-spacing: .01em; color: var(--keyFg); }
+.ksv-key.sm .sub { font-size: max(var(--fmin-sub, 11px), calc(var(--keyH, 56px) * var(--r-sub, 0.196))); font-weight: 500; letter-spacing: .01em; color: var(--keyFg); }
 .ksv-key:hover { border-color: var(--accent); }
 .ksv-key.is-hyper:not(.on) { border-color: var(--accent); }
 .ksv-key.is-hyper:not(.on) .cap { color: var(--accent); }
@@ -71,7 +73,7 @@
   box-shadow: var(--glow-x, 0px) var(--glow-y, 0px) 16px -6px color-mix(in oklab, var(--accent) 45%, transparent);
 }
 .ksv-arrows { display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: 1fr 1fr; gap: 3px; }
-.ksv-arrows .ar { height: calc((var(--keyH, 58px) - 3px) / 2); font-size: 11px; border-radius: 6px; }
+.ksv-arrows .ar { height: calc((var(--keyH, 58px) - 3px) / 2); font-size: max(var(--fmin-sub, 11px), calc(var(--keyH, 56px) * var(--r-sub, 0.196))); border-radius: calc(var(--keyH, 56px) * var(--r-radius, 0.125) * 0.6); }
 .ar.up { grid-column: 2; grid-row: 1; } .ar.lf { grid-column: 1; grid-row: 2; }
 .ar.dn { grid-column: 2; grid-row: 2; } .ar.rt { grid-column: 3; grid-row: 2; }
 
@@ -223,17 +225,16 @@
   background-size: 18px 18px;
 }
 
-/* ===== board preview — mirrors the selector keyboard, scaled down (keys size via JS-set --keyH/font-size) ===== */
+/* ===== board preview — the same keyboard as the selector, scaled down =====
+   The preview is a real (static) selector keyboard: it inherits every KEYSPEC
+   ratio, so it shares the selector's exact proportions. Only the px floors are
+   zeroed (via the static flag in applySpec) so labels shrink with the keys. */
 .ksv-app .is-board .ksv-kb { width: 100%; }
-.ksv-app .is-board .ksv-key { font: 600 1em/1 var(--ui); height: var(--keyH); border-radius: calc(var(--keyH) * 0.1); min-height: 0; }
-.ksv-app .is-board .ksv-fn { font-size: 0.8em; }
-/* keep the selector's glyph-over-sub-label modifier layout, scaled down to its exact ratios */
-.ksv-app .is-board .ksv-key.sm { padding: 0.42em 0.48em; font-size: 1em; }
-.ksv-app .is-board .ksv-key.sm .cap { font-size: 0.79em; }
-.ksv-app .is-board .ksv-key.sm .sub { display: block; font-size: 0.58em; }
+.ksv-app .is-board .ksv-key { min-height: 0; }
+.ksv-app .is-board .ksv-key.sm .sub { display: block; }
 .ksv-app .is-board .ksv-fnrow { gap: var(--g); }
 .ksv-app .is-board .ksv-arrows { gap: 2px; }
-.ksv-app .is-board .ksv-arrows .ar { height: calc((var(--keyH) - 2px) / 2); font-size: .7em; border-radius: calc(var(--keyH) * 0.06); }
+.ksv-app .is-board .ksv-arrows .ar { height: calc((var(--keyH) - 2px) / 2); }
 .ksv-app .is-board .ksv-key:hover { border-color: var(--keyBorder); }
 /* selected keys get the selector's accent fill + ring + glow */
 .opt-d .is-board .ksv-key.on {

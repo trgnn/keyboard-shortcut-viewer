@@ -65,11 +65,45 @@
   ];
   const FN = ['esc','F1','F2','F3','F4','F5','F6','F7','F8','F9','F10','F11','F12'];
 
+  /* ---- key proportions: the single source of truth for how a key looks ----
+     Every length is a ratio of keyH (one square key's height). All three render
+     paths consume these: the selector and the export preview read them as CSS
+     custom properties (applied in buildKeyboard); the canvas exporter reads them
+     directly. Change a value here and selection → preview → export stay coherent.
+     `floor` are px minimums the *interactive* selector clamps to so labels stay
+     legible on smaller screens; the preview and export scale purely by ratio. */
+  const KEYSPEC = {
+    radius: 0.125,   // corner radius
+    padX: 0.161,     // .sm key horizontal padding
+    padY: 0.143,     // .sm key vertical padding
+    letter: 0.340,   // letter / number / symbol key font
+    fnKey: 0.232,    // F-row keys + .sm modifier base font
+    glyph: 0.268,    // .sm modifier corner glyph (⌘ ⌥ ⇧ …, globe)
+    sub: 0.196,      // .sm modifier sub-label, esc label, arrow glyph
+    floor: { letter: 19, fnKey: 13, glyph: 15, sub: 11 }
+  };
+  // push KEYSPEC onto an element as CSS custom properties the stylesheet reads
+  function applySpec(elm, isStatic) {
+    const S = KEYSPEC, f = isStatic ? { letter: 0, fnKey: 0, glyph: 0, sub: 0 } : S.floor;
+    elm.style.setProperty('--r-radius', S.radius);
+    elm.style.setProperty('--r-letter', S.letter);
+    elm.style.setProperty('--r-fn', S.fnKey);
+    elm.style.setProperty('--r-glyph', S.glyph);
+    elm.style.setProperty('--r-sub', S.sub);
+    elm.style.setProperty('--r-padx', S.padX);
+    elm.style.setProperty('--r-pady', S.padY);
+    elm.style.setProperty('--fmin-letter', f.letter + 'px');
+    elm.style.setProperty('--fmin-fn', f.fnKey + 'px');
+    elm.style.setProperty('--fmin-glyph', f.glyph + 'px');
+    elm.style.setProperty('--fmin-sub', f.sub + 'px');
+  }
+
   const el = (tag, cls, html) => { const n = document.createElement(tag); if (cls) n.className = cls; if (html != null) n.innerHTML = html; return n; };
 
   function buildKeyboard(state, onChange, kopts) {
     kopts = kopts || {};
     const kb = el('div', 'ksv-kb' + (kopts.static ? ' ksv-static' : ''));
+    applySpec(kb, !!kopts.static);
 
     // function row — esc (wide) + F1..F12 (square, like the letter keys) on the 60-col grid,
     // with a blank Touch ID cell at the far right
@@ -386,7 +420,7 @@
     const b = BOARD;
     const colW = (b.innerW - (b.cols - 1) * b.g) / b.cols;
     const keyH = 4 * colW + 3 * b.g;          // square letter keys, like the selector
-    const r = keyH * 0.1;                      // corner radius matched to the selector (7px / 70px)
+    const r = keyH * KEYSPEC.radius;           // corner radius from the shared spec
     const W = b.innerW + b.pad * 2;
     const H = b.pad * 2 + 6 * keyH + 5 * b.rowGap; // fn row + 5 main rows, all the same height
     return { W, H, w: Math.round(W * scale), h: Math.round(H * scale), colW, keyH, r };
@@ -407,27 +441,37 @@
       ctx.lineWidth = 1; ctx.strokeStyle = opts.keyBorder || 'rgba(255,255,255,.08)'; ctx.stroke();
     }
   }
-  // centered (or left-aligned) single-label key: letters, numbers, fn row, arrows
+  // centered (or left-aligned) single-label key: letters, numbers, fn row, arrows.
+  // weight 400 matches the selector's .ksv-key font.
   function bkey(ctx, x, y, w, h, r, on, opts, accent, label, fontSize, align) {
     boardSurface(ctx, x, y, w, h, r, on, opts, accent);
     if (!label) return;
     ctx.fillStyle = opts.fg || '#d7dbe0'; ctx.textBaseline = 'middle';
-    ctx.font = '600 ' + fontSize + 'px ' + UIFONT;
-    if (align === 'left') { ctx.textAlign = 'left'; ctx.fillText(label, x + h * 0.28, y + h / 2); }
+    ctx.font = '400 ' + fontSize + 'px ' + UIFONT;
+    if (align === 'left') { ctx.textAlign = 'left'; ctx.fillText(label, x + h * KEYSPEC.padX, y + h / 2); }
     else { ctx.textAlign = 'center'; ctx.fillText(label, x + w / 2, y + h / 2 + 1); }
   }
-  // modifier key: corner glyph + sub-label, accent glyph when idle — mirrors the selector's .sm keys
+  // a small bottom-anchored label (esc and similar) — left- or right-aligned, weight 500
+  function blabel(ctx, x, y, w, h, opts, text, ralign) {
+    const padX = h * KEYSPEC.padX, padY = h * KEYSPEC.padY, sSize = h * KEYSPEC.sub;
+    ctx.fillStyle = opts.fg || '#d7dbe0'; ctx.textBaseline = 'middle';
+    ctx.font = '500 ' + sSize + 'px ' + UIFONT;
+    ctx.textAlign = ralign ? 'right' : 'left';
+    ctx.fillText(text, ralign ? x + w - padX : x + padX, y + h - padY - sSize / 2);
+  }
+  // modifier key: corner glyph + sub-label, accent glyph when idle — mirrors the selector's .sm keys.
+  // glyph weight 400 (inherits .ksv-key), sub weight 500 (.sm .sub); all sizes from KEYSPEC.
   function bmod(ctx, x, y, w, h, r, on, opts, accent, glyph, sub, ralign, accentGlyph, globe) {
     boardSurface(ctx, x, y, w, h, r, on, opts, accent);
-    // ratios mirror the selector's .sm keys (15px glyph / 11px sub / 8px,9px pad on ~70px keys)
-    const padX = h * 0.129, padY = h * 0.114, gSize = h * 0.214, sSize = h * 0.157, keyFg = opts.fg || '#d7dbe0';
+    const padX = h * KEYSPEC.padX, padY = h * KEYSPEC.padY, gSize = h * KEYSPEC.glyph, sSize = h * KEYSPEC.sub;
+    const keyFg = opts.fg || '#d7dbe0';
     const gColor = (!on && accentGlyph) ? accent : keyFg;
     const gx = ralign ? x + w - padX : x + padX;
     ctx.textBaseline = 'middle'; ctx.textAlign = ralign ? 'right' : 'left';
     if (globe) {
       drawGlobe(ctx, ralign ? x + w - padX - gSize / 2 : x + padX + gSize / 2, y + padY + gSize / 2, gSize / 2, gColor);
     } else {
-      ctx.fillStyle = gColor; ctx.font = '600 ' + gSize + 'px ' + UIFONT;
+      ctx.fillStyle = gColor; ctx.font = '400 ' + gSize + 'px ' + UIFONT;
       ctx.fillText(glyph, gx, y + padY + gSize / 2);
     }
     ctx.fillStyle = keyFg; ctx.textAlign = ralign ? 'right' : 'left';
@@ -466,7 +510,13 @@
     const sqW = 4 * colW + 3 * b.g; // square key width = keyH (one letter unit)
     FN.forEach((c) => {
       const w = c === 'esc' ? 6 * colW + 5 * b.g : sqW;
-      bkey(ctx, fx, y, w, keyH, r, sel.has(c), opts, accent, c === 'esc' ? 'esc' : c, keyH * 0.19, 'center');
+      if (c === 'esc') {
+        // esc reads like the other special keys: a small bottom-left label
+        boardSurface(ctx, fx, y, w, keyH, r, sel.has('esc'), opts, accent);
+        blabel(ctx, fx, y, w, keyH, opts, 'esc', false);
+      } else {
+        bkey(ctx, fx, y, w, keyH, r, sel.has(c), opts, accent, c, keyH * KEYSPEC.fnKey, 'center');
+      }
       fx += w + b.g;
     });
     // Touch ID — blank, deactivated-looking key with a faint sensor ring
@@ -485,11 +535,12 @@
         const [code, label, sub, span, cls] = cell;
         const w = span * colW + (span - 1) * b.g;
         if (code === 'arrows') {
-          const colw = (w - 2 * b.g) / 3, cellH = (keyH - b.g) / 2, ar = cellH * 0.18;
-          bkey(ctx, x + colw + b.g, y, colw, cellH, ar, isOn('up'), opts, accent, G.up, 12);
-          bkey(ctx, x, y + cellH + b.g, colw, cellH, ar, isOn('left'), opts, accent, G.left, 12);
-          bkey(ctx, x + colw + b.g, y + cellH + b.g, colw, cellH, ar, isOn('down'), opts, accent, G.down, 12);
-          bkey(ctx, x + 2 * (colw + b.g), y + cellH + b.g, colw, cellH, ar, isOn('right'), opts, accent, G.right, 12);
+          const colw = (w - 2 * b.g) / 3, cellH = (keyH - b.g) / 2;
+          const ar = keyH * KEYSPEC.radius * 0.6, af = keyH * KEYSPEC.sub;
+          bkey(ctx, x + colw + b.g, y, colw, cellH, ar, isOn('up'), opts, accent, G.up, af);
+          bkey(ctx, x, y + cellH + b.g, colw, cellH, ar, isOn('left'), opts, accent, G.left, af);
+          bkey(ctx, x + colw + b.g, y + cellH + b.g, colw, cellH, ar, isOn('down'), opts, accent, G.down, af);
+          bkey(ctx, x + 2 * (colw + b.g), y + cellH + b.g, colw, cellH, ar, isOn('right'), opts, accent, G.right, af);
           x += w + b.g; return;
         }
         const on = isOn(code);
@@ -500,20 +551,19 @@
         } else if (code === 'fn') {
           // like a real Mac: globe icon bottom-left, "fn" text top-right
           boardSurface(ctx, x, y, w, keyH, r, on, opts, accent);
-          const padX = keyH * 0.16, gSize = keyH * 0.19, sSize = keyH * 0.157, keyFg = opts.fg || '#d7dbe0';
-          const globeY = y + keyH - keyH * 0.114 - gSize / 2;
-          const fnY = y + keyH * 0.114 + sSize / 2;
-          drawGlobe(ctx, x + padX + gSize / 2, globeY, gSize / 2, on ? keyFg : accent);
+          const padX = keyH * KEYSPEC.padX, padY = keyH * KEYSPEC.padY;
+          const gSize = keyH * KEYSPEC.glyph, sSize = keyH * KEYSPEC.sub, keyFg = opts.fg || '#d7dbe0';
+          drawGlobe(ctx, x + padX + gSize / 2, y + keyH - padY - gSize / 2, gSize / 2, on ? keyFg : accent);
           ctx.fillStyle = keyFg; ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
           ctx.font = '500 ' + sSize + 'px ' + UIFONT;
-          ctx.fillText('fn', x + w - padX, fnY);
+          ctx.fillText('fn', x + w - padX, y + padY + sSize / 2);
         } else if (cls && /\bsm\b/.test(cls)) {
           const ralign = /\bralign\b/.test(cls), accentGlyph = /\b(modkey|hyper)\b/.test(cls);
           let glyph = label, slabel = sub;
           if (code === 'caps' && state.hyper) { glyph = '❖'; slabel = 'hyper'; }
           bmod(ctx, x, y, w, keyH, r, on, opts, accent, glyph, slabel, ralign, accentGlyph, code === 'fn');
         } else {
-          bkey(ctx, x, y, w, keyH, r, on, opts, accent, label, span <= 4 ? keyH * 0.271 : keyH * 0.2);
+          bkey(ctx, x, y, w, keyH, r, on, opts, accent, label, keyH * KEYSPEC.letter);
         }
         if (isDbl(state, code)) {
           const br = keyH * 0.16, bx = x + w - br * 0.6, by = y + br * 0.6;
