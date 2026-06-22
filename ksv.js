@@ -157,7 +157,7 @@
         const k = e.target.closest('.ksv-key');
         if (!k) return;
         const code = k.dataset.code;
-        if (!code || code === 'space') return;
+        if (!code) return;
         if (state.locked && state.locked.has(code)) return;
         const commit = () => { paint(kb, state); onChange(); };
         // keys with no double-tap meaning act immediately (activation keys + caps/hyper)

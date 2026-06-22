@@ -22,14 +22,14 @@
   border: 1px solid var(--keyBorder); background: var(--keyBg); color: var(--keyFg);
   border-radius: var(--keyR, 9px); height: var(--keyH, 58px);
   display: flex; align-items: center; justify-content: center;
-  font: 400 19px/1 var(--ui); cursor: pointer; user-select: none; padding: 0;
+  font: 400 max(19px, calc(var(--keyH, 56px) * 0.340))/1 var(--ui); cursor: pointer; user-select: none; padding: 0;
   transition: transform .05s ease;
 }
-.ksv-fn { font-size: 13px; }
+.ksv-fn { font-size: max(13px, calc(var(--keyH, 56px) * 0.232)); }
 .ksv-fn.esc { flex-direction: column; align-items: flex-start; justify-content: flex-end; padding: 8px 9px; }
-.ksv-fn.esc .sub { font-size: 11px; font-weight: 500; letter-spacing: .01em; color: var(--keyFg); }
-.ksv-key.sm { flex-direction: column; align-items: flex-start; justify-content: space-between; padding: 8px 9px; font-size: 13px; }
-.ksv-key.sm .cap { font-size: 15px; line-height: 1; color: var(--keyFg); }
+.ksv-fn.esc .sub { font-size: max(11px, calc(var(--keyH, 56px) * 0.196)); font-weight: 500; letter-spacing: .01em; color: var(--keyFg); }
+.ksv-key.sm { flex-direction: column; align-items: flex-start; justify-content: space-between; padding: 8px 9px; font-size: max(13px, calc(var(--keyH, 56px) * 0.232)); }
+.ksv-key.sm .cap { font-size: max(15px, calc(var(--keyH, 56px) * 0.268)); line-height: 1; color: var(--keyFg); }
 .ksv-key.sm.ralign { align-items: flex-end; text-align: right; }
 /* fn key (like a real Mac): globe icon bottom-left, "fn" text top-right */
 .ksv-key.sm.fnkey { flex-direction: column; justify-content: space-between; }
@@ -37,7 +37,7 @@
 .ksv-key.sm.fnkey .sub { order: 1; align-self: flex-end; }
 .ic { display: block; }
 .ksv-key.modkey:not(.on) .cap, .ksv-key.hyper:not(.on) .cap { color: var(--accent); }
-.ksv-key.sm .sub { font-size: 11px; font-weight: 500; letter-spacing: .01em; color: var(--keyFg); }
+.ksv-key.sm .sub { font-size: max(11px, calc(var(--keyH, 56px) * 0.196)); font-weight: 500; letter-spacing: .01em; color: var(--keyFg); }
 .ksv-key:hover { border-color: var(--accent); }
 .ksv-key.is-hyper:not(.on) { border-color: var(--accent); }
 .ksv-key.is-hyper:not(.on) .cap { color: var(--accent); }
