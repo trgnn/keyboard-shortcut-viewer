@@ -313,7 +313,7 @@
     const list = caps(state);
     if (!list.length) return;
     const fmt = opts.format || 'png';
-    const fname = 'shortcut-' + list.map(c => c.code).join('-');
+    const fname = exportName('keycaps', list, opts.bgName);
     if (fmt === 'svg') { downloadSVG(list, opts, fname); return; }
 
     const scale = opts.scale || 2;
@@ -412,6 +412,15 @@
   function download(name, href) {
     const a = document.createElement('a');
     a.download = name; a.href = href; a.click();
+  }
+
+  // build a descriptive export filename (no extension):
+  // KSV-<layout>-<background>_<shortcut>  e.g. "KSV-keycaps-dark_cmd-k"
+  function exportName(layout, list, bgName) {
+    const head = ['KSV', layout === 'board' ? 'keyboard' : 'keycaps'];
+    if (bgName) head.push(bgName);
+    const shortcut = (list && list.length) ? list.map(c => c.code).join('-') : '';
+    return head.join('-') + (shortcut ? '_' + shortcut : '');
   }
 
   /* ---- full-keyboard export ("key press on the actual layout") ---- */
@@ -579,7 +588,7 @@
       });
       y += keyH + b.rowGap;
     });
-    download('shortcut-keyboard.' + fmt, cv.toDataURL(MIME[fmt] || 'image/png', 0.95));
+    download(exportName('board', caps(state), opts.bgName) + '.' + fmt, cv.toDataURL(MIME[fmt] || 'image/png', 0.95));
   }
 
   window.KSV = { buildKeyboard, buildBoardPreview, renderCaps, caps, exportPNG, exportBoard, exportSize, boardSize, paint, HYPER, G };

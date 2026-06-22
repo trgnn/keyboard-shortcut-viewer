@@ -191,8 +191,11 @@
   function exportNow() {
     applyHyper();
     const onFg = fgFor(ui.accent);
-    const o = Object.assign({}, EXPORT_BG[effBg()], {
-      hyper: ui.accent, hyperFg: onFg, accent: ui.accent, format: ui.ext, scale: ui.scale
+    const bgKey = effBg();
+    const o = Object.assign({}, EXPORT_BG[bgKey], {
+      hyper: ui.accent, hyperFg: onFg, accent: ui.accent, format: ui.ext, scale: ui.scale,
+      // filename hints: which view and which background the user picked (alpha = transparent)
+      bgName: bgKey === 'trans' ? 'alpha' : bgKey
     });
     if (ui.layout === 'board') KSV.exportBoard(state, o); else KSV.exportPNG(state, o);
   }
