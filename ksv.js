@@ -38,29 +38,30 @@
     if (!state.lr && PAIR[code]) state.dbl.delete(PAIR[code]);
   }
 
-  // main 60-col block. each key: code, label, sub(optional small line), span, cls
+  // main 58-col block. each key: code, label, sub(optional small line), span, cls.
+  // letters/numbers span 4 (square); modifiers are trimmed so every row totals 58 cols
   const ROWS = [
     // number row
     [['`','`',null,4],['1','1',null,4],['2','2',null,4],['3','3',null,4],['4','4',null,4],
      ['5','5',null,4],['6','6',null,4],['7','7',null,4],['8','8',null,4],['9','9',null,4],
-     ['0','0',null,4],['-','-',null,4],['=','=',null,4],['del',G.del,'delete',8,'mod sm ralign']],
+     ['0','0',null,4],['-','-',null,4],['=','=',null,4],['del',G.del,'del',6,'mod sm ralign']],
     // qwerty
-    [['tab',G.tab,'tab',6,'mod sm'],['q','Q',null,4],['w','W',null,4],['e','E',null,4],['r','R',null,4],
+    [['tab',G.tab,'tab',5,'mod sm'],['q','Q',null,4],['w','W',null,4],['e','E',null,4],['r','R',null,4],
      ['t','T',null,4],['y','Y',null,4],['u','U',null,4],['i','I',null,4],['o','O',null,4],
-     ['p','P',null,4],['[','[',null,4],[']',']',null,4],['\\','\\',null,6]],
+     ['p','P',null,4],['[','[',null,4],[']',']',null,4],['\\','\\',null,5]],
     // home — caps lock = hyperkey
-    [['caps',G.caps,'caps',7,'mod sm hyper'],['a','A',null,4],['s','S',null,4],['d','D',null,4],
+    [['caps',G.caps,'caps',6,'mod sm hyper'],['a','A',null,4],['s','S',null,4],['d','D',null,4],
      ['f','F',null,4],['g','G',null,4],['h','H',null,4],['j','J',null,4],['k','K',null,4],
-     ['l','L',null,4],[';',';',null,4],["'","'",null,4],['ret',G.ret,'return',9,'mod sm ralign']],
+     ['l','L',null,4],[';',';',null,4],["'","'",null,4],['ret',G.ret,'return',8,'mod sm ralign']],
     // bottom
-    [['lshift',G.shift,'shift',9,'mod sm modkey'],['z','Z',null,4],['x','X',null,4],['c','C',null,4],
+    [['lshift',G.shift,'shift',8,'mod sm modkey'],['z','Z',null,4],['x','X',null,4],['c','C',null,4],
      ['v','V',null,4],['b','B',null,4],['n','N',null,4],['m','M',null,4],[',',',',null,4],
-     ['.','.',null,4],['/','/',null,4],['rshift',G.shift,'shift',11,'mod sm modkey ralign']],
+     ['.','.',null,4],['/','/',null,4],['rshift',G.shift,'shift',10,'mod sm modkey ralign']],
     // modifiers + arrows
-    [['fn',G.globe,'fn',5,'mod sm modkey'],['ctrl','\u2303','ctrl',5,'mod sm modkey'],
-     ['opt','\u2325','opt',5,'mod sm modkey'],['cmd','\u2318','cmd',6,'mod sm modkey'],
+    [['fn',G.globe,'fn',4,'mod sm modkey fnkey'],['ctrl','\u2303','ctrl',4,'mod sm modkey ralign'],
+     ['opt','\u2325','opt',4,'mod sm modkey ralign'],['cmd','\u2318','cmd',6,'mod sm modkey ralign'],
      ['space','',null,20,'mod'],['rcmd','\u2318','cmd',6,'mod sm modkey'],
-     ['ropt','\u2325','opt',5,'mod sm modkey'],['arrows','',null,8,'arrows']]
+     ['ropt','\u2325','opt',4,'mod sm modkey'],['arrows','',null,10,'arrows']]
   ];
   const FN = ['esc','F1','F2','F3','F4','F5','F6','F7','F8','F9','F10','F11','F12'];
 
@@ -70,13 +71,18 @@
     kopts = kopts || {};
     const kb = el('div', 'ksv-kb' + (kopts.static ? ' ksv-static' : ''));
 
-    // function row
+    // function row — esc (wide) + F1..F12 (square, like the letter keys) on the 60-col grid,
+    // with a blank Touch ID cell at the far right
     const fnRow = el('div', 'ksv-fnrow');
     FN.forEach((c, i) => {
       const k = el('button', 'ksv-key ksv-fn' + (i === 0 ? ' esc' : ''), c === 'esc' ? 'esc' : c);
+      k.style.gridColumn = 'span ' + (c === 'esc' ? 6 : 4);
       k.dataset.code = c;
       fnRow.appendChild(k);
     });
+    const touchid = el('div', 'ksv-key ksv-fn ksv-touchid');
+    touchid.style.gridColumn = 'span 4';
+    fnRow.appendChild(touchid);
     kb.appendChild(fnRow);
 
     // main rows
@@ -375,26 +381,66 @@
   }
 
   /* ---- full-keyboard export ("key press on the actual layout") ---- */
-  const BOARD = { pad: 44, g: 8, keyH: 64, rowGap: 8, r: 9, fnH: 40, fnGap: 14, cols: 60, innerW: 1180 };
+  const BOARD = { pad: 44, g: 8, rowGap: 8, cols: 58, innerW: 1180 };
   function boardDims(scale) {
     const b = BOARD;
+    const colW = (b.innerW - (b.cols - 1) * b.g) / b.cols;
+    const keyH = 4 * colW + 3 * b.g;          // square letter keys, like the selector
+    const r = keyH * 0.1;                      // corner radius matched to the selector (7px / 70px)
     const W = b.innerW + b.pad * 2;
-    const H = b.pad * 2 + b.fnH + b.fnGap + 5 * b.keyH + 4 * b.rowGap;
-    return { W, H, w: Math.round(W * scale), h: Math.round(H * scale) };
+    const H = b.pad * 2 + 6 * keyH + 5 * b.rowGap; // fn row + 5 main rows, all the same height
+    return { W, H, w: Math.round(W * scale), h: Math.round(H * scale), colW, keyH, r };
   }
   function boardSize(scale) { const d = boardDims(scale || 1); return { w: d.w, h: d.h, keys: 0 }; }
 
-  function bkey(ctx, x, y, w, h, r, on, accent, onFg, opts, label, fontSize) {
+  // a key surface: base fill + translucent accent overlay, ring and glow when selected — mirrors the selector
+  function boardSurface(ctx, x, y, w, h, r, on, opts, accent) {
     roundRect(ctx, x, y, w, h, r);
-    ctx.fillStyle = on ? accent : (opts.keyBg || '#131519'); ctx.fill();
-    ctx.strokeStyle = on ? 'rgba(255,255,255,.22)' : (opts.keyBorder || 'rgba(255,255,255,.08)');
-    ctx.lineWidth = 1; ctx.stroke();
-    if (label) {
-      ctx.fillStyle = on ? onFg : (opts.fg || '#d7dbe0');
-      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-      ctx.font = '600 ' + fontSize + 'px ' + UIFONT;
-      ctx.fillText(label, x + w / 2, y + h / 2 + 1);
+    ctx.fillStyle = opts.keyBg || '#131519'; ctx.fill();
+    if (on) {
+      ctx.save(); roundRect(ctx, x, y, w, h, r); ctx.clip();
+      ctx.globalAlpha = 0.26; ctx.fillStyle = accent; ctx.fillRect(x, y, w, h); ctx.restore();
+      ctx.save(); ctx.shadowColor = accent; ctx.shadowBlur = h * 0.2;
+      roundRect(ctx, x, y, w, h, r); ctx.lineWidth = 1.5; ctx.strokeStyle = accent; ctx.stroke(); ctx.restore();
+    } else {
+      roundRect(ctx, x, y, w, h, r);
+      ctx.lineWidth = 1; ctx.strokeStyle = opts.keyBorder || 'rgba(255,255,255,.08)'; ctx.stroke();
     }
+  }
+  // centered (or left-aligned) single-label key: letters, numbers, fn row, arrows
+  function bkey(ctx, x, y, w, h, r, on, opts, accent, label, fontSize, align) {
+    boardSurface(ctx, x, y, w, h, r, on, opts, accent);
+    if (!label) return;
+    ctx.fillStyle = opts.fg || '#d7dbe0'; ctx.textBaseline = 'middle';
+    ctx.font = '600 ' + fontSize + 'px ' + UIFONT;
+    if (align === 'left') { ctx.textAlign = 'left'; ctx.fillText(label, x + h * 0.28, y + h / 2); }
+    else { ctx.textAlign = 'center'; ctx.fillText(label, x + w / 2, y + h / 2 + 1); }
+  }
+  // modifier key: corner glyph + sub-label, accent glyph when idle — mirrors the selector's .sm keys
+  function bmod(ctx, x, y, w, h, r, on, opts, accent, glyph, sub, ralign, accentGlyph, globe) {
+    boardSurface(ctx, x, y, w, h, r, on, opts, accent);
+    // ratios mirror the selector's .sm keys (15px glyph / 11px sub / 8px,9px pad on ~70px keys)
+    const padX = h * 0.129, padY = h * 0.114, gSize = h * 0.214, sSize = h * 0.157, keyFg = opts.fg || '#d7dbe0';
+    const gColor = (!on && accentGlyph) ? accent : keyFg;
+    const gx = ralign ? x + w - padX : x + padX;
+    ctx.textBaseline = 'middle'; ctx.textAlign = ralign ? 'right' : 'left';
+    if (globe) {
+      drawGlobe(ctx, ralign ? x + w - padX - gSize / 2 : x + padX + gSize / 2, y + padY + gSize / 2, gSize / 2, gColor);
+    } else {
+      ctx.fillStyle = gColor; ctx.font = '600 ' + gSize + 'px ' + UIFONT;
+      ctx.fillText(glyph, gx, y + padY + gSize / 2);
+    }
+    ctx.fillStyle = keyFg; ctx.textAlign = ralign ? 'right' : 'left';
+    ctx.font = '500 ' + sSize + 'px ' + UIFONT;
+    ctx.fillText(sub, gx, y + h - padY - sSize / 2);
+  }
+  function drawGlobe(ctx, cx, cy, r, color) {
+    ctx.save();
+    ctx.strokeStyle = color; ctx.lineWidth = Math.max(0.7, r * 0.16);
+    ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.stroke();
+    ctx.beginPath(); ctx.ellipse(cx, cy, r * 0.42, r, 0, 0, Math.PI * 2); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(cx - r, cy); ctx.lineTo(cx + r, cy); ctx.stroke();
+    ctx.restore();
   }
 
   function exportBoard(state, opts) {
@@ -402,8 +448,10 @@
     const b = BOARD;
     const fmt = opts.format === 'svg' ? 'png' : (opts.format || 'png');
     const scale = opts.scale || 2;
-    const sel = state.sel;
+    const sel = state.sel, lr = !!state.lr;
+    const isOn = (c) => sel.has(c) || (!lr && PAIR[c] && sel.has(PAIR[c]));
     const d = boardDims(scale);
+    const keyH = d.keyH, colW = d.colW, r = d.r;
     const cv = document.createElement('canvas'); cv.width = d.w; cv.height = d.h;
     const ctx = cv.getContext('2d'); ctx.scale(scale, scale);
     const bg = opts.bg === 'transparent'
@@ -411,49 +459,75 @@
       : (opts.bg || '#0a0b0d');
     if (bg) { ctx.fillStyle = bg; ctx.fillRect(0, 0, d.W, d.H); }
     const accent = opts.accent || opts.hyper || '#b7ff4a';
-    const onFg = opts.hyperFg || '#0a0b0d';
-    const colW = (b.innerW - (b.cols - 1) * b.g) / b.cols;
 
-    // function row
+    // function row — esc (wide) + F1..F12 (square) + a blank Touch ID square at the far right
     let y = b.pad;
-    const fnUnits = 13.6, fnColW = (b.innerW - 12 * b.g) / fnUnits;
     let fx = b.pad;
-    FN.forEach((c, i) => {
-      const w = (i === 0 ? 1.6 : 1) * fnColW;
-      bkey(ctx, fx, y, w, b.fnH, b.r - 2, sel.has(c), accent, onFg, opts, c === 'esc' ? 'esc' : c, 13);
+    const sqW = 4 * colW + 3 * b.g; // square key width = keyH (one letter unit)
+    FN.forEach((c) => {
+      const w = c === 'esc' ? 6 * colW + 5 * b.g : sqW;
+      bkey(ctx, fx, y, w, keyH, r, sel.has(c), opts, accent, c === 'esc' ? 'esc' : c, keyH * 0.19, 'center');
       fx += w + b.g;
     });
-    y += b.fnH + b.fnGap;
+    // Touch ID — blank, deactivated-looking key with a faint sensor ring
+    ctx.save(); ctx.globalAlpha = 0.4;
+    boardSurface(ctx, fx, y, sqW, keyH, r, false, opts, accent);
+    ctx.lineWidth = Math.max(1, keyH * 0.022);
+    ctx.strokeStyle = opts.keyBorder || 'rgba(255,255,255,.18)';
+    ctx.beginPath(); ctx.arc(fx + sqW / 2, y + keyH / 2, keyH * 0.2, 0, Math.PI * 2); ctx.stroke();
+    ctx.restore();
+    y += keyH + b.rowGap;
 
     // main rows
     ROWS.forEach(row => {
       let x = b.pad;
       row.forEach(cell => {
-        const [code, label, sub, span] = cell;
+        const [code, label, sub, span, cls] = cell;
         const w = span * colW + (span - 1) * b.g;
         if (code === 'arrows') {
-          const colw = (w - 2 * b.g) / 3, cellH = (b.keyH - b.g) / 2;
-          bkey(ctx, x + colw + b.g, y, colw, cellH, 6, sel.has('up'), accent, onFg, opts, G.up, 12);
-          bkey(ctx, x, y + cellH + b.g, colw, cellH, 6, sel.has('left'), accent, onFg, opts, G.left, 12);
-          bkey(ctx, x + colw + b.g, y + cellH + b.g, colw, cellH, 6, sel.has('down'), accent, onFg, opts, G.down, 12);
-          bkey(ctx, x + 2 * (colw + b.g), y + cellH + b.g, colw, cellH, 6, sel.has('right'), accent, onFg, opts, G.right, 12);
-        } else if (code === 'space') {
-          bkey(ctx, x, y, w, b.keyH, b.r, sel.has('space'), accent, onFg, opts, '', 20);
-        } else {
-          bkey(ctx, x, y, w, b.keyH, b.r, sel.has(code), accent, onFg, opts, label, span <= 4 ? 21 : 15);
-          if (isDbl(state, code) && (sel.has(code) || isDbl(state, code))) {
-            const br = 11, bx = x + w - br * 0.5, by = y + br * 0.5;
-            ctx.beginPath(); ctx.arc(bx, by, br, 0, Math.PI * 2);
-            ctx.fillStyle = accent; ctx.fill();
-            ctx.lineWidth = 1.5; ctx.strokeStyle = bg || '#0a0b0d'; ctx.stroke();
-            ctx.fillStyle = onFg; ctx.font = '700 13px ' + UIFONT;
-            ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-            ctx.fillText('2', bx, by + 0.5);
-          }
+          const colw = (w - 2 * b.g) / 3, cellH = (keyH - b.g) / 2, ar = cellH * 0.18;
+          bkey(ctx, x + colw + b.g, y, colw, cellH, ar, isOn('up'), opts, accent, G.up, 12);
+          bkey(ctx, x, y + cellH + b.g, colw, cellH, ar, isOn('left'), opts, accent, G.left, 12);
+          bkey(ctx, x + colw + b.g, y + cellH + b.g, colw, cellH, ar, isOn('down'), opts, accent, G.down, 12);
+          bkey(ctx, x + 2 * (colw + b.g), y + cellH + b.g, colw, cellH, ar, isOn('right'), opts, accent, G.right, 12);
+          x += w + b.g; return;
         }
+        const on = isOn(code);
+        const locked = !!(state.locked && state.locked.has(code));
+        if (locked) ctx.globalAlpha = 0.28;
+        if (code === 'space') {
+          bkey(ctx, x, y, w, keyH, r, on, opts, accent, '', 20);
+        } else if (code === 'fn') {
+          // like a real Mac: globe icon bottom-left, "fn" text top-right
+          boardSurface(ctx, x, y, w, keyH, r, on, opts, accent);
+          const padX = keyH * 0.16, gSize = keyH * 0.19, sSize = keyH * 0.157, keyFg = opts.fg || '#d7dbe0';
+          const globeY = y + keyH - keyH * 0.114 - gSize / 2;
+          const fnY = y + keyH * 0.114 + sSize / 2;
+          drawGlobe(ctx, x + padX + gSize / 2, globeY, gSize / 2, on ? keyFg : accent);
+          ctx.fillStyle = keyFg; ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
+          ctx.font = '500 ' + sSize + 'px ' + UIFONT;
+          ctx.fillText('fn', x + w - padX, fnY);
+        } else if (cls && /\bsm\b/.test(cls)) {
+          const ralign = /\bralign\b/.test(cls), accentGlyph = /\b(modkey|hyper)\b/.test(cls);
+          let glyph = label, slabel = sub;
+          if (code === 'caps' && state.hyper) { glyph = '❖'; slabel = 'hyper'; }
+          bmod(ctx, x, y, w, keyH, r, on, opts, accent, glyph, slabel, ralign, accentGlyph, code === 'fn');
+        } else {
+          bkey(ctx, x, y, w, keyH, r, on, opts, accent, label, span <= 4 ? keyH * 0.271 : keyH * 0.2);
+        }
+        if (isDbl(state, code)) {
+          const br = keyH * 0.16, bx = x + w - br * 0.6, by = y + br * 0.6;
+          ctx.beginPath(); ctx.arc(bx, by, br, 0, Math.PI * 2);
+          ctx.fillStyle = accent; ctx.fill();
+          ctx.lineWidth = 1.5; ctx.strokeStyle = bg || '#0a0b0d'; ctx.stroke();
+          ctx.fillStyle = opts.hyperFg || '#0a0b0d'; ctx.font = '700 ' + (br * 1.1) + 'px ' + UIFONT;
+          ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+          ctx.fillText('2', bx, by + 0.5);
+        }
+        if (locked) ctx.globalAlpha = 1;
         x += w + b.g;
       });
-      y += b.keyH + b.rowGap;
+      y += keyH + b.rowGap;
     });
     download('shortcut-keyboard.' + fmt, cv.toDataURL(MIME[fmt] || 'image/png', 0.95));
   }

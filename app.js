@@ -68,8 +68,8 @@
     state.locked = new Set(pressed ? (HYPER_LOCK[ui.hyper] || []) : []);
     state.locked.forEach((c) => state.sel.delete(c));
   }
-  function updateCapsKey() {
-    const caps = kbMount.querySelector('.ksv-key[data-code="caps"]');
+  function updateCapsKey(container) {
+    const caps = (container || kbMount).querySelector('.ksv-key[data-code="caps"]');
     if (!caps) return;
     const active = ui.hyper !== 'off';
     caps.classList.toggle('is-hyper', active);
@@ -91,11 +91,13 @@
       const board = KSV.buildBoardPreview(state);
       preview.appendChild(board);
       const aw = Math.max(120, preview.clientWidth - 28);
-      const kh = Math.max(12, aw / 1100 * 60);
+      const g = Math.max(2, aw / 1100 * 7);
+      const colW = (aw - 57 * g) / 58;
+      const kh = Math.max(12, 4 * colW + 3 * g); // square letter keys, matching the export
       board.style.setProperty('--keyH', kh + 'px');
-      board.style.setProperty('--fnH', kh * 0.62 + 'px');
-      board.style.setProperty('--g', Math.max(2, aw / 1100 * 7) + 'px');
-      board.style.fontSize = Math.max(7, kh * 0.42) + 'px';
+      board.style.setProperty('--g', g + 'px');
+      board.style.fontSize = Math.max(4, kh * 0.271) + 'px';
+      updateCapsKey(board); // reflect the hyperkey glyph in the preview too
     } else {
       preview.classList.remove('is-board');
       KSV.renderCaps(preview, state);
@@ -202,10 +204,9 @@
     const W = kb.clientWidth;
     if (!W) return;
     const g = parseFloat(getComputedStyle(kb).getPropertyValue('--g')) || 6;
-    const colW = (W - 59 * g) / 60;
+    const colW = (W - 57 * g) / 58;
     const unit = 4 * colW + 3 * g;
-    kb.style.setProperty('--keyH', unit + 'px');
-    kb.style.setProperty('--fnH', Math.round(unit * 0.58) + 'px');
+    kb.style.setProperty('--keyH', unit + 'px'); // fn keys share this height (square, like the letters)
   }
 
   /* ---- cursor glow on the grid background behind the keyboard ---- */
