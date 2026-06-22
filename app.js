@@ -11,11 +11,13 @@
     caom: ['ctrl', 'opt', 'cmd', 'rcmd', 'ropt'],
     scaom: ['ctrl', 'opt', 'cmd', 'rcmd', 'ropt', 'lshift', 'rshift']
   };
-  // per-background paint options handed to the exporters
+  // per-background paint options handed to the exporters.
+  // keyBg comes from the shared solid key colour (KSV.KEYBG) so it can't drift from the preview.
+  const KEYBG = KSV.KEYBG;
   const EXPORT_BG = {
-    dark: { bg: '#0a0b0d', keyBg: '#131519', keyBorder: 'rgba(255,255,255,.08)', plus: '#5a616b' },
-    light: { bg: '#f3f0f8', keyBg: '#131519', keyBorder: 'rgba(255,255,255,.08)', plus: '#9aa094' },
-    trans: { bg: 'transparent', keyBg: '#131519', keyBorder: 'rgba(255,255,255,.12)', plus: '#5a616b' }
+    dark: { bg: '#0a0b0d', keyBg: KEYBG, keyBorder: 'rgba(255,255,255,.08)', plus: '#5a616b' },
+    light: { bg: '#f3f0f8', keyBg: KEYBG, keyBorder: 'rgba(255,255,255,.08)', plus: '#9aa094' },
+    trans: { bg: 'transparent', keyBg: KEYBG, keyBorder: 'rgba(255,255,255,.12)', plus: '#5a616b' }
   };
 
   /* pick legible on-accent text by real (WCAG) contrast ratio */

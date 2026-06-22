@@ -82,7 +82,31 @@
     sub: 0.196,      // .sm modifier sub-label, esc label, arrow glyph
     floor: { letter: 19, fnKey: 13, glyph: 15, sub: 11 }
   };
-  // push KEYSPEC onto an element as CSS custom properties the stylesheet reads
+
+  /* ---- selected-key paint: the single source of truth for the .on look ----
+     The live selector and preview consume these as CSS custom properties (set in
+     applySpec); the canvas exporter reads the object directly. Because the export
+     is a separate <canvas> reimplementation that can't read CSS, this object is the
+     only thing tying the two together — edit it and the selector, the preview, and
+     the export all move as one. Each value is an accent opacity (0–1), except
+     `ringStop` (gradient position). The glow's *geometry* stays per-surface (the
+     selector tracks the cursor, the preview/export are static) but its opacity is
+     shared via `glow`. */
+  const ONSTATE = {
+    fill: 0.26,      // flat accent wash over the whole key
+    ringFrom: 0.72,  // 135° ring/edge gradient — bright corner (top-left)
+    ringTo: 0.16,    //                          — dim corner (bottom-right)
+    ringStop: 0.75,  // position of the dim stop
+    glow: 0.50       // glow accent opacity
+  };
+
+  // solid key surface colour. The live selector uses a translucent --keyBg (frosted
+  // over the panel), but the flat export and its preview both want this solid value —
+  // shared here so the two can't drift (applySpec hands it to the preview; the export
+  // pulls it into EXPORT_BG in app.js).
+  const KEYBG = '#131519';
+
+  // push the shared specs onto an element as CSS custom properties the stylesheet reads
   function applySpec(elm, isStatic) {
     const S = KEYSPEC, f = isStatic ? { letter: 0, fnKey: 0, glyph: 0, sub: 0 } : S.floor;
     elm.style.setProperty('--r-radius', S.radius);
@@ -96,6 +120,15 @@
     elm.style.setProperty('--fmin-fn', f.fnKey + 'px');
     elm.style.setProperty('--fmin-glyph', f.glyph + 'px');
     elm.style.setProperty('--fmin-sub', f.sub + 'px');
+    const O = ONSTATE;
+    elm.style.setProperty('--on-fill', O.fill);
+    elm.style.setProperty('--on-ring-from', O.ringFrom);
+    elm.style.setProperty('--on-ring-to', O.ringTo);
+    elm.style.setProperty('--on-ring-stop', (O.ringStop * 100) + '%');
+    elm.style.setProperty('--on-glow', O.glow);
+    // the preview is a proxy for the flat export, so it uses the solid key surface
+    // (the interactive selector keeps the app's translucent --keyBg)
+    if (isStatic) elm.style.setProperty('--keyBg', KEYBG);
   }
 
   const el = (tag, cls, html) => { const n = document.createElement(tag); if (cls) n.className = cls; if (html != null) n.innerHTML = html; return n; };
@@ -436,16 +469,32 @@
   }
   function boardSize(scale) { const d = boardDims(scale || 1); return { w: d.w, h: d.h, keys: 0 }; }
 
-  // a key surface: base fill + translucent accent overlay, ring and glow when selected — mirrors the selector
+  // #rrggbb at a given alpha → rgba() string (mirrors CSS color-mix(accent X%, transparent))
+  function hexA(hex, a) {
+    const m = /^#?([0-9a-f]{6})$/i.exec((hex || '').trim());
+    if (!m) return hex;
+    const n = parseInt(m[1], 16);
+    return 'rgba(' + (n >> 16 & 255) + ',' + (n >> 8 & 255) + ',' + (n & 255) + ',' + a + ')';
+  }
+  // a key surface. Idle: solid key base + hairline border. Selected: the shared
+  // ONSTATE paint — an accent gradient (ringFrom→ringTo) with a flat accent wash on
+  // top, plus a gradient ring and soft glow — matching the selector / preview .on state.
   function boardSurface(ctx, x, y, w, h, r, on, opts, accent) {
-    roundRect(ctx, x, y, w, h, r);
-    ctx.fillStyle = opts.keyBg || '#131519'; ctx.fill();
     if (on) {
+      const O = ONSTATE;
+      // 135°-equivalent accent gradient; used for both the fill base and the ring,
+      // mirroring the DOM border-box layer
+      const grad = ctx.createLinearGradient(x, y, x + w, y + h);
+      grad.addColorStop(0, hexA(accent, O.ringFrom)); grad.addColorStop(O.ringStop, hexA(accent, O.ringTo));
       ctx.save(); roundRect(ctx, x, y, w, h, r); ctx.clip();
-      ctx.globalAlpha = 0.26; ctx.fillStyle = accent; ctx.fillRect(x, y, w, h); ctx.restore();
-      ctx.save(); ctx.shadowColor = accent; ctx.shadowBlur = h * 0.2;
-      roundRect(ctx, x, y, w, h, r); ctx.lineWidth = 1.5; ctx.strokeStyle = accent; ctx.stroke(); ctx.restore();
+      ctx.fillStyle = grad; ctx.fillRect(x, y, w, h);                       // gradient base
+      ctx.globalAlpha = O.fill; ctx.fillStyle = accent; ctx.fillRect(x, y, w, h); // flat accent wash on top
+      ctx.restore();
+      ctx.save(); ctx.shadowColor = hexA(accent, O.glow); ctx.shadowBlur = h * 0.18;
+      roundRect(ctx, x, y, w, h, r); ctx.lineWidth = 1.5; ctx.strokeStyle = grad; ctx.stroke(); ctx.restore();
     } else {
+      roundRect(ctx, x, y, w, h, r);
+      ctx.fillStyle = opts.keyBg || '#131519'; ctx.fill();
       roundRect(ctx, x, y, w, h, r);
       ctx.lineWidth = 1; ctx.strokeStyle = opts.keyBorder || 'rgba(255,255,255,.08)'; ctx.stroke();
     }
@@ -591,7 +640,7 @@
     download(exportName('board', caps(state), opts.bgName) + '.' + fmt, cv.toDataURL(MIME[fmt] || 'image/png', 0.95));
   }
 
-  window.KSV = { buildKeyboard, buildBoardPreview, renderCaps, caps, exportPNG, exportBoard, exportSize, boardSize, paint, HYPER, G };
+  window.KSV = { buildKeyboard, buildBoardPreview, renderCaps, caps, exportPNG, exportBoard, exportSize, boardSize, paint, HYPER, G, KEYBG };
   function roundRect(ctx, x, y, w, h, r) {
     ctx.beginPath();
     ctx.moveTo(x + r, y);

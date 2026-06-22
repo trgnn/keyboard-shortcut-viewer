@@ -65,12 +65,22 @@
   box-shadow: 0 0 0 1px var(--accent);
 }
 .ksv-key.on .sub { opacity: .85; }
-.opt-d .stage .ksv-key.on {
+/* selected-key fill + ring — shared by the live selector and the export preview, and
+   mirrored on <canvas> by boardSurface(). All values come from ONSTATE (ksv.js) via
+   the --on-* custom properties, so the look stays identical across all three. */
+.opt-d .stage .ksv-key.on,
+.opt-d .is-board .ksv-key.on {
   border: 1px solid transparent;
   background:
-    linear-gradient(color-mix(in oklab, var(--accent) 26%, transparent) 0 100%) padding-box,
-    linear-gradient(135deg, color-mix(in oklab, var(--accent) 72%, transparent), color-mix(in oklab, var(--accent) 16%, transparent) 75%) border-box;
-  box-shadow: var(--glow-x, 0px) var(--glow-y, 0px) 16px -6px color-mix(in oklab, var(--accent) 45%, transparent);
+    linear-gradient(color-mix(in oklab, var(--accent) calc(var(--on-fill, 0.26) * 100%), transparent) 0 100%) padding-box,
+    linear-gradient(135deg,
+      color-mix(in oklab, var(--accent) calc(var(--on-ring-from, 0.72) * 100%), transparent),
+      color-mix(in oklab, var(--accent) calc(var(--on-ring-to, 0.16) * 100%), transparent) var(--on-ring-stop, 75%)) border-box;
+}
+/* glow geometry is per-surface (the selector tracks the cursor; the preview is
+   static) but its accent opacity is shared via --on-glow */
+.opt-d .stage .ksv-key.on {
+  box-shadow: var(--glow-x, 0px) var(--glow-y, 0px) 16px -6px color-mix(in oklab, var(--accent) calc(var(--on-glow, 0.5) * 100%), transparent);
 }
 .ksv-arrows { display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: 1fr 1fr; gap: 3px; }
 .ksv-arrows .ar { height: calc((var(--keyH, 58px) - 3px) / 2); font-size: max(var(--fmin-sub, 11px), calc(var(--keyH, 56px) * var(--r-sub, 0.196))); border-radius: calc(var(--keyH, 56px) * var(--r-radius, 0.125) * 0.6); }
@@ -217,6 +227,8 @@
 .sw-chip.on { border-color: #f4f6f4; box-shadow: inset 0 0 0 1px rgba(0,0,0,.35); }
 
 /* ===== preview background variants ===== */
+/* dark export is a flat #0a0b0d fill — drop the preview grid so it matches */
+.ksv-app .prev-card.bg-dark { background-image: none; }
 .ksv-app .prev-card.bg-light { background: #f3f0f8; background-image: none; border-color: #e2dcec; }
 .ksv-app .bg-light .ksv-plus { color: #9aa094; }
 .ksv-app .prev-card.bg-trans {
@@ -230,19 +242,17 @@
    ratio, so it shares the selector's exact proportions. Only the px floors are
    zeroed (via the static flag in applySpec) so labels shrink with the keys. */
 .ksv-app .is-board .ksv-kb { width: 100%; }
+/* solid key surface (--keyBg) is set on the preview keyboard by applySpec from the
+   shared KSV.KEYBG, so it always matches the export */
 .ksv-app .is-board .ksv-key { min-height: 0; }
 .ksv-app .is-board .ksv-key.sm .sub { display: block; }
 .ksv-app .is-board .ksv-fnrow { gap: var(--g); }
 .ksv-app .is-board .ksv-arrows { gap: 2px; }
 .ksv-app .is-board .ksv-arrows .ar { height: calc((var(--keyH) - 2px) / 2); }
 .ksv-app .is-board .ksv-key:hover { border-color: var(--keyBorder); }
-/* selected keys get the selector's accent fill + ring + glow */
+/* board preview shares the fill + ring rule above; only its static glow differs */
 .opt-d .is-board .ksv-key.on {
-  border: 1px solid transparent;
-  background:
-    linear-gradient(color-mix(in oklab, var(--accent) 26%, transparent) 0 100%) padding-box,
-    linear-gradient(135deg, color-mix(in oklab, var(--accent) 72%, transparent), color-mix(in oklab, var(--accent) 16%, transparent) 75%) border-box;
-  box-shadow: 0 0 12px -4px color-mix(in oklab, var(--accent) 50%, transparent);
+  box-shadow: 0 0 12px -4px color-mix(in oklab, var(--accent) calc(var(--on-glow, 0.5) * 100%), transparent);
 }
 /* static export-preview keyboard is display-only, not interactive */
 .ksv-static .ksv-key { pointer-events: none; cursor: default; }
