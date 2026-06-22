@@ -22,11 +22,12 @@
   border: 1px solid var(--keyBorder); background: var(--keyBg); color: var(--keyFg);
   border-radius: var(--keyR, 9px); height: var(--keyH, 58px);
   display: flex; align-items: center; justify-content: center;
-  font: 600 19px/1 var(--ui); cursor: pointer; user-select: none; padding: 0;
+  font: 400 19px/1 var(--ui); cursor: pointer; user-select: none; padding: 0;
   transition: transform .05s ease;
 }
-.ksv-fn { font-size: 15px; }
-.ksv-fn.esc { justify-content: center; }
+.ksv-fn { font-size: 13px; }
+.ksv-fn.esc { flex-direction: column; align-items: flex-start; justify-content: flex-end; padding: 8px 9px; }
+.ksv-fn.esc .sub { font-size: 11px; font-weight: 500; letter-spacing: .01em; color: var(--keyFg); }
 .ksv-key.sm { flex-direction: column; align-items: flex-start; justify-content: space-between; padding: 8px 9px; font-size: 13px; }
 .ksv-key.sm .cap { font-size: 15px; line-height: 1; color: var(--keyFg); }
 .ksv-key.sm.ralign { align-items: flex-end; text-align: right; }
@@ -105,7 +106,7 @@
 
 /* ================= OPTION D — Console Inspector (primary) ================= */
 .opt-d {
-  --ui: 'Inter', ui-sans-serif, system-ui, sans-serif;
+  --ui: -apple-system, 'SF Pro Display', ui-sans-serif, system-ui, sans-serif;
   --mono: 'JetBrains Mono', ui-monospace, 'SF Mono', monospace;
   --accent: #b7ff4a; --onFg: #0a0b0d;
   --keyBg: #131519; --keyFg: #d7dbe0; --keyBorder: #23262d; --keyR: 7px;

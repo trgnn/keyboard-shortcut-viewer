@@ -75,7 +75,7 @@
     // with a blank Touch ID cell at the far right
     const fnRow = el('div', 'ksv-fnrow');
     FN.forEach((c, i) => {
-      const k = el('button', 'ksv-key ksv-fn' + (i === 0 ? ' esc' : ''), c === 'esc' ? 'esc' : c);
+      const k = el('button', 'ksv-key ksv-fn' + (i === 0 ? ' esc' : ''), i === 0 ? '<span class="sub">esc</span>' : c);
       k.style.gridColumn = 'span ' + (c === 'esc' ? 6 : 4);
       k.dataset.code = c;
       fnRow.appendChild(k);
@@ -373,7 +373,7 @@
       '" viewBox="0 0 ' + g.w + ' ' + g.h + '">' + parts.join('') + '</svg>';
     download(fname + '.svg', 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg));
   }
-  const UIFONT = "Inter, ui-sans-serif, system-ui, sans-serif";
+  const UIFONT = "-apple-system, 'SF Pro Display', ui-sans-serif, system-ui, sans-serif";
 
   function download(name, href) {
     const a = document.createElement('a');
