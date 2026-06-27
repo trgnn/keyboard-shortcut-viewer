@@ -1,0 +1,11 @@
+{
+  "name": "Keyboard Shortcut Viewer",
+  "short_name": "KSV",
+  "icons": [
+    { "src": "/favicon/favicon-192x192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/favicon/favicon-512x512.png", "sizes": "512x512", "type": "image/png" }
+  ],
+  "theme_color": "#0a0b0d",
+  "background_color": "#0a0b0d",
+  "display": "browser"
+}

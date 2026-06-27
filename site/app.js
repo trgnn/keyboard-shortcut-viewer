@@ -40,7 +40,10 @@
   const preview = $('preview');
   const sizeCap = $('sizeCap');
   const downloadBtn = $('downloadBtn');
-  const favicon = document.querySelector('link[rel="icon"]');
+  // every declared rel="icon" link (.ico + .svg). The static hrefs in the HTML
+  // are what crawlers/link-previewers read; in a live tab setFavicon() swaps
+  // them all to an accent-tinted data URI, whichever one the browser prefers.
+  const favicons = document.querySelectorAll('link[rel="icon"]');
 
   /* ---- state ---- */
   // engine state (shared with KSV)
@@ -204,11 +207,12 @@
   function setBg(v) { ui.bg = v; renderBgSeg(); refresh(); }
   // favicon follows the accent: a keycap outline drawn in the current accent colour
   function setFavicon(hex) {
-    if (!favicon) return;
+    if (!favicons.length) return;
     const svg = "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'>"
       + "<rect width='32' height='32' rx='7' fill='#0a0b0d'/>"
       + "<rect x='7' y='7' width='18' height='18' rx='4' fill='none' stroke='" + hex + "' stroke-width='2.2'/></svg>";
-    favicon.href = 'data:image/svg+xml,' + encodeURIComponent(svg);
+    const href = 'data:image/svg+xml,' + encodeURIComponent(svg);
+    favicons.forEach(link => { link.href = href; });
   }
   function setAccent(hex) {
     ui.accent = hex;
@@ -296,6 +300,14 @@
     });
   }
 
+  /* Footer milestone version, from config.js (KSV_VERSION). Guarded so the
+     footer still renders its static fallback if config.js is ever absent. */
+  function renderVersion() {
+    if (typeof KSV_VERSION === 'undefined') return;
+    const el = document.querySelector('.cf-ver');
+    if (el) el.textContent = KSV_VERSION;
+  }
+
   /* ---- init ---- */
   function init() {
     restore(); // load saved UI options; the key selection stays at its default
@@ -306,6 +318,7 @@
     kbMount.appendChild(KSV.buildKeyboard(state, refresh));
 
     renderHyper(); renderLr(); renderLayout(); renderExt(); renderBgSeg(); renderSwatches();
+    renderVersion();
     $('resetBtn').onclick = reset;
     downloadBtn.onclick = exportNow;
 

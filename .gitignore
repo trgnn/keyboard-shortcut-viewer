@@ -1,2 +1,9 @@
 .DS_Store
 .claude/
+
+# local-only, not part of the deployed project
+v0/
+_ressources/
+
+# project notes / context — kept local, not published
+CLAUDE.md
