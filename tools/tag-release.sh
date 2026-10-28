@@ -26,6 +26,17 @@ if [[ -n "$(git status --porcelain)" ]]; then
   exit 1
 fi
 
+# The amend would move HEAD away from a tag already laid on it: that tag would then
+# point to a commit off the branch. A new milestone needs a new commit.
+if [[ -n "$(git tag --points-at HEAD)" ]]; then
+  echo "error: HEAD is already tagged ($(git tag --points-at HEAD | paste -sd ' ' -)): commit" >&2
+  echo "       the work for the new milestone first." >&2
+  exit 1
+fi
+
+# The amend rewrites HEAD: if it's already on a remote, the push has to force.
+pushed="$(git branch -r --contains HEAD 2>/dev/null | { grep -v ' -> ' || true; } | sed 's/^ *//' | paste -sd ' ' -)"
+
 # --- current state --------------------------------------------------------
 current_cfg="$(sed -nE "s/^const KSV_VERSION = '([^']*)';/\1/p" "$CONFIG")"
 last_tag="$(git for-each-ref refs/tags --sort=-creatordate --format='%(refname:short)' | head -1)"
@@ -67,6 +78,10 @@ fi
 # --- confirm (amend rewrites HEAD) ----------------------------------------
 echo
 echo "→ Set KSV_VERSION=$VERSION, fold it into HEAD ($head_commit) via amend, and tag $VERSION."
+if [[ -n "$pushed" ]]; then
+  echo "⚠ HEAD is already pushed ($pushed): the amend rewrites it, so the push will force"
+  echo "  over published history. Prefer a new commit for the milestone."
+fi
 read -rp "Continue? [y/N] " ok
 [[ "$ok" == "y" || "$ok" == "Y" ]] || { echo "aborted."; exit 0; }
 

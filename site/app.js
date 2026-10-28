@@ -362,8 +362,8 @@
     });
   }
 
-  /* Footer milestone version, from config.js (KSV_VERSION). Guarded so the
-     footer still renders its static fallback if config.js is ever absent. */
+  /* Footer milestone version, from config.js (KSV_VERSION) — the only source: the HTML
+     label is empty, so it never shows a stale version, and stays hidden if config.js is absent. */
   function renderVersion() {
     if (typeof KSV_VERSION === 'undefined') return;
     const el = document.querySelector('.cf-ver');

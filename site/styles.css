@@ -26,6 +26,8 @@ body { overflow: auto; }
   padding: 16px 0 4px; pointer-events: none;
 }
 .opt-d .d-footer .cf-meta { display: flex; align-items: center; gap: 9px; min-width: 0; }
+/* the label stays hidden until renderVersion() fills it from config.js (no static fallback to go stale) */
+.opt-d .d-footer .cf-ver:empty { display: none; }
 .opt-d .d-footer .cf-ver { flex: none; font: 600 10.5px/1 var(--mono); letter-spacing: .06em; color: var(--accent); padding: 3px 6px; border: 1px solid color-mix(in oklab, var(--accent) 35%, #23262d); border-radius: 5px; }
 .opt-d .d-footer .cf-text { font: 500 11.5px/1 var(--mono); color: var(--muted-text); letter-spacing: .01em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .opt-d .d-footer .cf-link { display: inline-flex; align-items: center; gap: 4px; font: 500 12px/1 var(--mono); letter-spacing: .04em; color: var(--muted-text); text-decoration: none; flex: none; pointer-events: auto; transition: color .14s ease; }
