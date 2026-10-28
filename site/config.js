@@ -5,4 +5,4 @@
 // Scheme: v{major}.{minor} — major = change of direction, minor = functional
 // milestone. Source of truth for the version shown in the footer. Bumped
 // together with the tag by tools/tag-release.sh — do not edit by hand.
-const KSV_VERSION = 'v1.0';
+const KSV_VERSION = 'v1.1';
