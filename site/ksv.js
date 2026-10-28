@@ -1,71 +1,147 @@
 /* Keyboard Shortcut Viewer — shared data, render, interaction, export.
    Exposes window.KSV. Each app instance calls KSV.mount(rootEl, opts). */
 (function () {
-  // glyphs
-  const G = {
-    cmd: '\u2318', opt: '\u2325', ctrl: '\u2303', shift: '\u21E7',
-    caps: '\u21EA', tab: '\u21E5', ret: '\u23CE', del: '\u232B',
-    globe: '<svg class="ic" viewBox="0 0 16 16" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="1.25"><circle cx="8" cy="8" r="6.3"/><ellipse cx="8" cy="8" rx="2.7" ry="6.3"/><line x1="1.7" y1="8" x2="14.3" y2="8"/></svg>',
-    up: '\u25B2', down: '\u25BC', left: '\u25C0', right: '\u25B6',
-    esc: 'esc'
+  /* ---- glyphs: SVG paths on a 24-unit box, so they look the same on every OS ----
+     Unicode glyphs (⌘ ⌥ ⇧ ▲ …) render from whatever font the system falls back to,
+     and some (▶ ◀) can even turn into emoji. These paths are the single source:
+     the DOM inlines them as <svg> (icon), the canvas exporters replay them with
+     Path2D (drawIcon), and the SVG export embeds them (svgIcon). `fill` glyphs are
+     solid; the rest are round-capped strokes of ICON_STROKE units. */
+  const ICON_STROKE = 1.75;
+  const ICONS = {
+    cmd:   { d: 'M9 9V6a3 3 0 1 0-3 3h12a3 3 0 1 0-3-3v12a3 3 0 1 0 3-3H6a3 3 0 1 0 3 3V9' },
+    opt:   { d: 'M3 6h5l8 12h5M14 6h7' },
+    ctrl:  { d: 'M6 14.5l6-6 6 6' },
+    shift: { d: 'M12 3.5L3.5 12H8v8h8v-8h4.5z' },
+    caps:  { d: 'M12 3.5L3.5 11.5H8V15h8v-3.5h4.5zM8 20h8' },
+    tab:   { d: 'M3.5 12h14M12.5 7l5 5-5 5M20.5 6v12' },
+    ret:   { d: 'M19.5 5v6a3 3 0 0 1-3 3H5M9 10l-4 4 4 4' },
+    del:   { d: 'M8.5 5h12v14h-12L2.5 12zM11.5 9l6 6M17.5 9l-6 6' },
+    globe: { d: 'M2.55 12a9.45 9.45 0 1 0 18.9 0a9.45 9.45 0 1 0-18.9 0M7.95 12a4.05 9.45 0 1 0 8.1 0a4.05 9.45 0 1 0-8.1 0M2.55 12h18.9' },
+    hyper: { d: 'M12 2.5l4 4-4 4-4-4zM17.5 8l4 4-4 4-4-4zM12 13.5l4 4-4 4-4-4zM6.5 8l4 4-4 4-4-4z', fill: true },
+    up:    { d: 'M12 5.5l7.5 12.5h-15z', fill: true },
+    down:  { d: 'M12 18.5L19.5 6h-15z', fill: true },
+    left:  { d: 'M5.5 12L18 4.5v15z', fill: true },
+    right: { d: 'M18.5 12L6 4.5v15z', fill: true },
+    // UI chrome (buttons / links), not keys
+    reset:    { d: 'M4 12a8 8 0 1 0 2.34-5.66L4 8.5M4 4v4.5h4.5' },
+    download: { d: 'M12 4v12M6.5 10.5L12 16l5.5-5.5M5 20h14' },
+    external: { d: 'M7 17L17 7M9 7h8v8' },
+    copy:     { d: 'M9 9h10.5v10.5H9zM15 9V4.5H4.5V15H9' },
+    check:    { d: 'M5 12.5l4.5 4.5L19 7.5' },
+    cross:    { d: 'M6.5 6.5l11 11M17.5 6.5l-11 11' }
   };
-  // UI font stack, shared by the DOM (--ui) and every canvas/SVG exporter
-  const UIFONT = "-apple-system, 'SF Pro Display', ui-sans-serif, system-ui, sans-serif";
+  const iconPaint = (I) => I.fill
+    ? 'fill="currentColor"'
+    : 'fill="none" stroke="currentColor" stroke-width="' + ICON_STROKE + '" stroke-linecap="round" stroke-linejoin="round"';
+  // inline <svg> for the DOM — 1em square, coloured by currentColor
+  function icon(name) {
+    const I = ICONS[name];
+    return '<svg class="ic" viewBox="0 0 24 24" width="1em" height="1em" ' + iconPaint(I) + ' aria-hidden="true"><path d="' + I.d + '"/></svg>';
+  }
+  // canvas: draw an icon in the size\u00D7size box whose top-left is (x, y)
+  const PATHS = {};
+  function drawIcon(ctx, name, x, y, size, color) {
+    const I = ICONS[name], p = PATHS[name] || (PATHS[name] = new Path2D(I.d));
+    ctx.save(); ctx.translate(x, y); ctx.scale(size / 24, size / 24);
+    if (I.fill) { ctx.fillStyle = color; ctx.fill(p); }
+    else { ctx.strokeStyle = color; ctx.lineWidth = ICON_STROKE; ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.stroke(p); }
+    ctx.restore();
+  }
+  // SVG export: the same icon as a positioned <path>
+  function svgIcon(name, x, y, size, color) {
+    const I = ICONS[name];
+    return '<path transform="translate(' + x + ' ' + y + ') scale(' + size / 24 + ')" d="' + I.d + '" ' +
+      iconPaint(I).replace(/currentColor/g, color) + '/>';
+  }
+  // key-label font, shared by the DOM (--key) and every exporter: Inter, self-hosted as
+  // "KSV Inter" (fonts/, built by tools/build-fonts.py) so a locally installed Inter of
+  // another version can't stand in. The SVG export draws its outlines (glyphs.js).
+  const UIFONT = "'KSV Inter', -apple-system, 'SF Pro Display', ui-sans-serif, system-ui, sans-serif";
+  const FONT_WEIGHTS = [400, 500, 600, 700];
+  // canvas only draws a webfont once it's loaded: exports wait for this
+  const fontsReady = document.fonts
+    ? Promise.all(FONT_WEIGHTS.map((w) => document.fonts.load(w + " 16px 'KSV Inter'"))).catch(() => {})
+    : Promise.resolve();
+  // glyph outlines are only needed for SVG: loaded on the first SVG export
+  let glyphsReady;
+  function loadGlyphs() {
+    return glyphsReady || (glyphsReady = new Promise((res, rej) => {
+      if (window.KSV_GLYPHS) return res();
+      const sc = document.createElement('script');
+      sc.src = 'glyphs.js'; sc.onload = res; sc.onerror = () => { glyphsReady = null; rej(new Error('glyphs.js failed to load')); };
+      document.head.appendChild(sc);
+    }));
+  }
+  const ready = (fmt) => Promise.all([fontsReady, fmt === 'svg' ? loadGlyphs() : null]);
+
+  // flattened SVG text: the label as Inter outlines, laid out like canvas fillText with
+  // textBaseline 'middle' (the baseline offset is measured on a canvas), so the vector
+  // export matches the raster one and never depends on the viewer's fonts. No kerning:
+  // the webfont subset has none either. `fill` is the attribute string to paint with.
+  const BASELINE = {};
+  function baselineShift(weight) { // middle line → alphabetic baseline, per px of font size
+    if (!(weight in BASELINE)) {
+      const c = document.createElement('canvas').getContext('2d');
+      c.font = weight + ' 100px ' + UIFONT; c.textBaseline = 'middle';
+      BASELINE[weight] = -c.measureText('H').alphabeticBaseline / 100;
+    }
+    return BASELINE[weight];
+  }
+  function svgText(str, x, y, t, fill) {
+    const G = window.KSV_GLYPHS, weight = t.weight || 400, set = G.w[weight] || G.w[400], k = t.size / G.upm;
+    let adv = 0;
+    const glyphs = [];
+    for (const ch of String(str)) {
+      const g = set[ch] || set['?'];
+      if (g[1]) glyphs.push('<path transform="translate(' + adv + ' 0)" d="' + g[1] + '"/>');
+      adv += g[0];
+    }
+    const width = adv * k, align = t.align || 'center';
+    const x0 = align === 'left' ? x : align === 'right' ? x - width : x - width / 2;
+    return '<g transform="translate(' + x0 + ' ' + (y + baselineShift(weight) * t.size) + ') scale(' + k + ')"' + fill + '>' + glyphs.join('') + '</g>';
+  }
   // keyboard grid width in columns \u2014 one source for the layout, the export, and app.js sizing
   const COLS = 58;
   // The hyperkey: Caps Lock remapped to Control+Option+Command. (mods, no shift)
   const HYPER = ['ctrl', 'opt', 'cmd'];
-  // true modifier keys — any number can be held; everything else is a single "activation" key
-  const MODS = new Set(['caps', 'fn', 'ctrl', 'opt', 'cmd', 'rcmd', 'ropt', 'lshift', 'rshift']);
-  // modifiers eligible for a double-tap shortcut (caps lock / hyper excluded)
-  const DBLABLE = new Set(['fn', 'ctrl', 'opt', 'cmd', 'rcmd', 'ropt', 'lshift', 'rshift']);
-  // left/right modifier pairs (for "distinguish L/R")
-  const PAIR = { cmd: 'rcmd', rcmd: 'cmd', opt: 'ropt', ropt: 'opt', lshift: 'rshift', rshift: 'lshift' };
-  const CANON = { rcmd: 'cmd', ropt: 'opt', rshift: 'lshift' };
-  const DIR = { cmd: 'left', rcmd: 'right', opt: 'left', ropt: 'right', lshift: 'left', rshift: 'right' };
-  const canon = (c) => CANON[c] || c;
-  // count distinct logical modifiers held (a linked L/R pair counts once when not distinguishing)
-  function logicalModCount(state) {
-    const lr = !!state.lr, seen = new Set();
-    state.sel.forEach((c) => { if (MODS.has(c)) seen.add(lr ? c : canon(c)); });
-    return seen.size;
-  }
-  // double-tap helpers
-  function isDbl(state, code) {
-    if (!state.dbl) return false;
-    if (state.dbl.has(code)) return true;
-    return !state.lr && PAIR[code] && state.dbl.has(PAIR[code]);
-  }
-  function clearDbl(state, code) {
-    if (!state.dbl) return;
-    state.dbl.delete(code);
-    if (!state.lr && PAIR[code]) state.dbl.delete(PAIR[code]);
-  }
+  // selection rules live in select.js (no DOM, tested under Node)
+  const S = window.KSVSelect;
+  const { DBLABLE, PAIR, DIR, canon, isOn, isDbl } = S;
+  // a second click on the same modifier within this window makes it a double-tap
+  const DOUBLE_MS = 220;
+  // spoken names for keys whose face is a glyph or an abbreviation (letters read as is)
+  const KEYNAME = {
+    esc: 'escape', del: 'delete', caps: 'caps lock', ret: 'return', lshift: 'left shift', rshift: 'right shift',
+    ctrl: 'control', opt: 'left option', cmd: 'left command', rcmd: 'right command', ropt: 'right option',
+    space: 'space', up: 'up arrow', down: 'down arrow', left: 'left arrow', right: 'right arrow'
+  };
 
   // main 58-col block. each key: code, label, sub(optional small line), span, cls.
+  // keys with a sub-label (the .sm modifiers) take an ICONS name as their label.
   // letters/numbers span 4 (square); modifiers are trimmed so every row totals 58 cols
   const ROWS = [
     // number row
     [['`','`',null,4],['1','1',null,4],['2','2',null,4],['3','3',null,4],['4','4',null,4],
      ['5','5',null,4],['6','6',null,4],['7','7',null,4],['8','8',null,4],['9','9',null,4],
-     ['0','0',null,4],['-','-',null,4],['=','=',null,4],['del',G.del,'del',6,'mod sm ralign']],
+     ['0','0',null,4],['-','-',null,4],['=','=',null,4],['del','del','del',6,'mod sm ralign']],
     // qwerty
-    [['tab',G.tab,'tab',5,'mod sm'],['q','Q',null,4],['w','W',null,4],['e','E',null,4],['r','R',null,4],
+    [['tab','tab','tab',5,'mod sm'],['q','Q',null,4],['w','W',null,4],['e','E',null,4],['r','R',null,4],
      ['t','T',null,4],['y','Y',null,4],['u','U',null,4],['i','I',null,4],['o','O',null,4],
      ['p','P',null,4],['[','[',null,4],[']',']',null,4],['\\','\\',null,5]],
     // home — caps lock = hyperkey
-    [['caps',G.caps,'caps',6,'mod sm hyper'],['a','A',null,4],['s','S',null,4],['d','D',null,4],
+    [['caps','caps','caps',6,'mod sm hyper'],['a','A',null,4],['s','S',null,4],['d','D',null,4],
      ['f','F',null,4],['g','G',null,4],['h','H',null,4],['j','J',null,4],['k','K',null,4],
-     ['l','L',null,4],[';',';',null,4],["'","'",null,4],['ret',G.ret,'return',8,'mod sm ralign']],
+     ['l','L',null,4],[';',';',null,4],["'","'",null,4],['ret','ret','return',8,'mod sm ralign']],
     // bottom
-    [['lshift',G.shift,'shift',8,'mod sm modkey'],['z','Z',null,4],['x','X',null,4],['c','C',null,4],
+    [['lshift','shift','shift',8,'mod sm modkey'],['z','Z',null,4],['x','X',null,4],['c','C',null,4],
      ['v','V',null,4],['b','B',null,4],['n','N',null,4],['m','M',null,4],[',',',',null,4],
-     ['.','.',null,4],['/','/',null,4],['rshift',G.shift,'shift',10,'mod sm modkey ralign']],
+     ['.','.',null,4],['/','/',null,4],['rshift','shift','shift',10,'mod sm modkey ralign']],
     // modifiers + arrows
-    [['fn',G.globe,'fn',4,'mod sm modkey fnkey'],['ctrl','\u2303','ctrl',4,'mod sm modkey ralign'],
-     ['opt','\u2325','opt',4,'mod sm modkey ralign'],['cmd','\u2318','cmd',6,'mod sm modkey ralign'],
-     ['space','',null,20,'mod'],['rcmd','\u2318','cmd',6,'mod sm modkey'],
-     ['ropt','\u2325','opt',4,'mod sm modkey'],['arrows','',null,10,'arrows']]
+    [['fn','globe','fn',4,'mod sm modkey fnkey'],['ctrl','ctrl','ctrl',4,'mod sm modkey ralign'],
+     ['opt','opt','opt',4,'mod sm modkey ralign'],['cmd','cmd','cmd',6,'mod sm modkey ralign'],
+     ['space','',null,20,'mod'],['rcmd','cmd','cmd',6,'mod sm modkey'],
+     ['ropt','opt','opt',4,'mod sm modkey'],['arrows','',null,10,'arrows']]
   ];
   const FN = ['esc','F1','F2','F3','F4','F5','F6','F7','F8','F9','F10','F11','F12'];
 
@@ -149,6 +225,7 @@
       const k = el('button', 'ksv-key ksv-fn' + (i === 0 ? ' esc' : ''), i === 0 ? '<span class="sub">esc</span>' : c);
       k.style.gridColumn = 'span ' + (c === 'esc' ? 6 : 4);
       k.dataset.code = c;
+      if (KEYNAME[c]) k.setAttribute('aria-label', KEYNAME[c]);
       fnRow.appendChild(k);
     });
     const touchid = el('div', 'ksv-key ksv-fn ksv-touchid');
@@ -163,118 +240,81 @@
         if (code === 'arrows') {
           const wrap = el('div', 'ksv-arrows');
           wrap.style.gridColumn = 'span ' + span;
-          const up = el('button', 'ksv-key ar up', G.up); up.dataset.code = 'up';
-          const lf = el('button', 'ksv-key ar lf', G.left); lf.dataset.code = 'left';
-          const dn = el('button', 'ksv-key ar dn', G.down); dn.dataset.code = 'down';
-          const rt = el('button', 'ksv-key ar rt', G.right); rt.dataset.code = 'right';
-          wrap.append(up, lf, dn, rt);
+          [['up', 'up'], ['left', 'lf'], ['down', 'dn'], ['right', 'rt']].forEach(([c, pos]) => {
+            const a = el('button', 'ksv-key ar ' + pos, icon(c));
+            a.dataset.code = c; a.setAttribute('aria-label', KEYNAME[c]);
+            wrap.appendChild(a);
+          });
           r.appendChild(wrap);
           return;
         }
         const k = el('button', 'ksv-key ' + (cls || ''));
         k.style.gridColumn = 'span ' + span;
         k.dataset.code = code;
-        if (sub) k.innerHTML = '<span class="cap">' + label + '</span><span class="sub">' + sub + '</span>';
+        if (sub) k.innerHTML = '<span class="cap">' + icon(label) + '</span><span class="sub">' + sub + '</span>';
         else k.textContent = label;
+        if (KEYNAME[code]) k.setAttribute('aria-label', KEYNAME[code]);
         r.appendChild(k);
       });
       kb.appendChild(r);
     });
 
-    if (!kopts.static) {
-      // single-click toggles a key; double-click on a modifier marks it "double-tap"
-      const doSingle = (code) => {
-        const lr = !!state.lr;
-        // a standalone double-tap shortcut resets on any normal click
-        if (state.dbl && state.dbl.size) {
-          const hitDoubled = state.dbl.has(code) || (!lr && PAIR[code] && state.dbl.has(PAIR[code]));
-          state.dbl = new Set();
-          state.sel = new Set();
-          if (hitDoubled) return;       // double-tapped key clicked again → cleared
-          // otherwise start a fresh selection with the clicked key
-        }
-        if (!lr && PAIR[code]) {
-          const partner = PAIR[code];
-          const on = state.sel.has(code) || state.sel.has(partner);
-          if (on) { state.sel.delete(code); state.sel.delete(partner); clearDbl(state, code); }
-          else {
-            if (logicalModCount(state) >= 4) return;
-            state.sel.add(code);
-          }
-        } else if (state.sel.has(code)) {
-          state.sel.delete(code); clearDbl(state, code);
-        } else {
-          if (MODS.has(code)) {
-            // distinguish L/R: only one side of a pair at a time
-            if (lr && PAIR[code] && state.sel.has(PAIR[code])) { state.sel.delete(PAIR[code]); clearDbl(state, PAIR[code]); }
-            const capsHyper = code === 'caps' && state.hyper;
-            if (!capsHyper && logicalModCount(state) >= 4) return;
-          } else {
-            [...state.sel].forEach(c => { if (!MODS.has(c)) state.sel.delete(c); });
-          }
-          state.sel.add(code);
-        }
-      };
-      const doDouble = (code) => {
-        // a double-tap is a standalone shortcut — it can't be combined with
-        // another double-tap or any other key, so clear everything else
-        const wasDoubled = state.dbl && (state.dbl.has(code) || (!state.lr && PAIR[code] && state.dbl.has(PAIR[code])));
-        state.sel = new Set();
-        state.dbl = new Set();
-        if (!wasDoubled) { state.sel.add(code); state.dbl.add(code); } // else → back to neutral
-      };
-      let pending = null;
+    if (kopts.static) {
+      // display-only copy for the export preview: out of the tab order and the a11y tree
+      kb.inert = true;
+    } else {
+      // A click applies at once. A second click on the same modifier within DOUBLE_MS
+      // turns it into a double-tap, replayed from the state before the first click, as
+      // long as nothing else changed the selection in between. Nothing is ever pending,
+      // so reset, export and the L/R toggle always see what's on screen.
+      const snap = () => ({ sel: new Set(state.sel), dbl: new Set(state.dbl || []) });
+      const sig = () => [...state.sel].sort().join() + '|' + [...(state.dbl || [])].sort().join();
+      let last = null; // { code, before, after, t } — the last modifier click
       kb.addEventListener('click', e => {
         const k = e.target.closest('.ksv-key');
-        if (!k) return;
-        const code = k.dataset.code;
-        if (!code) return;
-        if (state.locked && state.locked.has(code)) return;
-        const commit = () => { paint(kb, state); onChange(); };
-        // keys with no double-tap meaning act immediately (activation keys + caps/hyper)
-        if (!DBLABLE.has(code)) { doSingle(code); commit(); return; }
-        // modifier: defer briefly to detect a second click (double-tap)
-        if (pending && pending.code === code) {
-          clearTimeout(pending.timer); pending = null;
-          doDouble(code); commit();
-          return;
-        }
-        if (pending) { clearTimeout(pending.timer); doSingle(pending.code); pending = null; }
-        pending = { code, timer: setTimeout(() => { pending = null; doSingle(code); commit(); }, 220) };
+        const code = k && k.dataset.code;
+        if (!code || (state.locked && state.locked.has(code))) return;
+        const now = performance.now();
+        const upgrade = DBLABLE.has(code) && last && last.code === code && now - last.t < DOUBLE_MS && sig() === last.after;
+        const before = upgrade ? last.before : snap();
+        const next = S.select(Object.assign({}, state, before), code, { double: upgrade });
+        state.sel = next.sel; state.dbl = next.dbl;
+        paint(kb, state); onChange();
+        last = DBLABLE.has(code) && !upgrade ? { code, before, t: now, after: sig() } : null;
       });
     }
 
-    paint(kb, state);
+    paint(kb, state, kopts.dim);
     return kb;
   }
 
-  // non-interactive keyboard for export previews
-  function buildBoardPreview(state) {
-    return buildKeyboard(state, () => {}, { static: true });
+  // non-interactive keyboard for export previews; opts.dim mirrors the export option
+  function buildBoardPreview(state, opts) {
+    return buildKeyboard(state, () => {}, { static: true, dim: !opts || opts.dim !== false });
   }
 
-  function paint(kb, state) {
-    const lr = !!state.lr;
-    const atMax = logicalModCount(state) >= 4;
-    const isOn = (code) => state.sel.has(code) || (!lr && PAIR[code] && state.sel.has(PAIR[code]));
+  // dim = grey out the keys that can't be added (locked by the hyperkey, or over the
+  // modifier limit). Always on in the selector; the export preview follows the export option.
+  function paint(kb, state, dim) {
+    dim = dim !== false;
     kb.querySelectorAll('.ksv-key').forEach(k => {
       const code = k.dataset.code;
-      k.classList.toggle('on', !!isOn(code));
-      k.classList.toggle('dbl', !!(isOn(code) && isDbl(state, code)));
-      k.classList.toggle('locked', !!(state.locked && state.locked.has(code)));
-      const unselMod = MODS.has(code) && !isOn(code);
-      const capsEx = code === 'caps' && state.hyper;
-      k.classList.toggle('maxed', atMax && unselMod && !capsEx);
+      if (!code) return;
+      const on = isOn(state, code);
+      k.classList.toggle('on', on);
+      k.setAttribute('aria-pressed', on);
+      k.classList.toggle('dbl', on && isDbl(state, code));
+      k.classList.toggle('locked', dim && !!(state.locked && state.locked.has(code)));
+      k.classList.toggle('maxed', dim && S.maxed(state, code));
     });
   }
 
   // produce ordered list of {label, sub} keycaps for the current selection
   const ORDER = ['caps','fn','ctrl','opt','cmd','rcmd','ropt','lshift','rshift','tab','esc','del','ret'];
-  const LABELS = {
-    caps: ['\u2756', 'hyper'], ctrl: ['\u2303', null], opt: ['\u2325', null], cmd: ['\u2318', null],
-    rcmd: ['\u2318', null], ropt: ['\u2325', null], lshift: ['\u21E7', null], rshift: ['\u21E7', null],
-    tab: ['\u21E5', null], esc: ['esc', null], del: ['\u232B', null], ret: ['\u23CE', null],
-    up: ['\u25B2', null], down: ['\u25BC', null], left: ['\u25C0', null], right: ['\u25B6', null]
+  // keys drawn as an ICONS glyph in the keycap list; everything else is a text label
+  const CAPICON = {
+    fn: 'globe', ctrl: 'ctrl', opt: 'opt', cmd: 'cmd', rcmd: 'cmd', ropt: 'opt', lshift: 'shift', rshift: 'shift',
+    tab: 'tab', del: 'del', ret: 'ret', up: 'up', down: 'down', left: 'left', right: 'right'
   };
   function caps(state) {
     const lr = !!state.lr;
@@ -292,14 +332,16 @@
     const keys = selArr.filter(c => !ORDER.includes(c));
     const out = [];
     mods.forEach(c => {
-      let lab = LABELS[c] || [c];
       const isHyper = c === 'caps' && !!state.hyper;
-      if (c === 'caps') lab = isHyper ? ['\u2756', 'hyper'] : ['\u21EA', 'caps'];
-      let sub = lab[1] || null;
+      const ic = c === 'caps' ? (isHyper ? 'hyper' : 'caps') : CAPICON[c];
+      let sub = c === 'caps' ? (isHyper ? 'hyper' : 'caps') : null;
       if (lr && DIR[c]) sub = DIR[c];
-      out.push({ code: c, label: lab[0], sub, mod: true, hyper: isHyper, dbl: isDbl(state, c) });
+      out.push({ code: c, icon: ic || null, label: ic ? null : c, sub, mod: true, hyper: isHyper, dbl: isDbl(state, c) });
     });
-    keys.forEach(c => out.push({ code: c, label: (LABELS[c]||[c.toUpperCase()])[0], sub: null, mod: false }));
+    keys.forEach(c => {
+      const ic = CAPICON[c] || null;
+      out.push({ code: c, icon: ic, label: ic ? null : c.toUpperCase(), sub: null, mod: false });
+    });
     return out;
   }
 
@@ -315,9 +357,8 @@
     list.forEach((c, i) => {
       if (i) row.appendChild(el('span', 'ksv-plus', '+'));
       const chip = el('span', 'ksv-chip' + (c.mod ? ' mod' : '') + (c.hyper ? ' hyper' : '') + (c.dbl ? ' dbl' : ''));
-      const glyph = c.code === 'fn' ? G.globe : c.label;
-      const isText = typeof glyph === 'string' && glyph.length > 1 && glyph[0] !== '<';
-      if (isText) chip.classList.add('txt');
+      const glyph = c.icon ? icon(c.icon) : c.label;
+      if (!c.icon && c.label.length > 1) chip.classList.add('txt');
       if (!c.mod && c.code.length === 1 && !/[a-z0-9]/i.test(c.code)) chip.classList.add('sym');
       chip.innerHTML = '<span class="g">' + glyph + '</span>' + (c.sub ? '<span class="s">' + c.sub + '</span>' : '') + (c.dbl ? '<span class="dbbadge">2</span>' : '');
       row.appendChild(chip);
@@ -325,11 +366,13 @@
     container.appendChild(row);
   }
 
-  // TODO (post-MVP): the keycap-chip export below (geom + exportPNG/downloadSVG) is a
+  // TODO (post-MVP): the keycap-chip export below (geom + capsImage/capsSVG) is a
   // standalone hardcoded design — not yet wired to KEYSPEC/ONSTATE like the board path.
   // It matches the chip preview in *content* (both use caps()) but not via a shared
   // style source, so restyling the chips can drift from their export. Unify it the same
   // way the board renderer was unified.
+  // icon box (px @1x) for a glyph keycap — its strokes span ~¾ of it, about a 44px font's cap height
+  const ICON_CHIP = 40;
   // geometry for a given key list at a given pixel scale
   function geom(n, scale) {
     const pad = 28 * scale, gap = 14 * scale, plus = 22 * scale;
@@ -348,15 +391,20 @@
   }
 
   const MIME = { png: 'image/png', jpg: 'image/jpeg', webp: 'image/webp' };
+  // can this browser's canvas encode the format? (an unsupported type silently falls back to PNG)
+  function canEncode(fmt) {
+    if (fmt === 'svg' || fmt === 'png') return true;
+    const c = document.createElement('canvas'); c.width = c.height = 1;
+    return c.toDataURL(MIME[fmt]).indexOf('data:' + MIME[fmt]) === 0;
+  }
 
-  // export — png / jpg / webp (raster) or svg (vector), at a pixel scale
-  function exportPNG(state, opts) {
-    opts = opts || {};
+  // keycap image — png / jpg / webp (canvas, at a pixel scale) or svg (vector)
+  function capsImage(state, opts) {
     const list = caps(state);
-    if (!list.length) return;
+    if (!list.length) return null;
     const fmt = opts.format || 'png';
-    const fname = exportName('keycaps', list, opts.bgName);
-    if (fmt === 'svg') { downloadSVG(list, opts, fname); return; }
+    const name = exportName('keycaps', list, opts.bgName) + '.' + fmt;
+    if (fmt === 'svg') return { name, svg: capsSVG(list, opts) };
 
     const scale = opts.scale || 2;
     const g = geom(list.length, scale);
@@ -383,9 +431,14 @@
       ctx.lineWidth = 1.5 * scale; ctx.stroke();
       ctx.fillStyle = accent ? (opts.hyperFg || '#fff') : (opts.fg || '#e8eaed');
       ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-      const single = c.label.length <= 2;
-      ctx.font = 600 + ' ' + (single ? 44 : 26) * scale + 'px ' + UIFONT;
-      ctx.fillText(c.label, x + g.kw / 2, g.pad + g.kh / 2 + (c.sub ? -8 * scale : 0));
+      const gy = g.pad + g.kh / 2 + (c.sub ? -8 * scale : 0);
+      if (c.icon) {
+        const is = ICON_CHIP * scale;
+        drawIcon(ctx, c.icon, x + (g.kw - is) / 2, gy - is / 2, is, ctx.fillStyle);
+      } else {
+        ctx.font = 600 + ' ' + (c.label.length <= 2 ? 44 : 26) * scale + 'px ' + UIFONT;
+        ctx.fillText(c.label, x + g.kw / 2, gy);
+      }
       if (c.sub) {
         ctx.font = 500 + ' ' + 16 * scale + 'px ' + UIFONT;
         ctx.fillStyle = accent ? 'rgba(255,255,255,.8)' : (opts.sub || '#8b93a1');
@@ -403,22 +456,19 @@
       }
       x += g.kw;
     });
-    download(fname + '.' + fmt, cv.toDataURL(MIME[fmt] || 'image/png', 0.95));
+    return { name, canvas: cv, fmt };
   }
 
-  // vector SVG export — scale-independent
-  function downloadSVG(list, opts, fname) {
+  // vector SVG markup — scale-independent
+  function capsSVG(list, opts) {
     const s = 1, g = geom(list.length, s);
-    const esc = t => String(t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
     const parts = [];
     const bg = opts.bg === 'transparent' ? null : (opts.bg || '#0c0d10');
     if (bg) parts.push('<rect width="' + g.w + '" height="' + g.h + '" fill="' + bg + '"/>');
     let x = g.pad;
     list.forEach((c, i) => {
       if (i) {
-        parts.push('<text x="' + (x + g.gap + g.plus / 2) + '" y="' + (g.pad + g.kh / 2) +
-          '" font-size="34" font-weight="600" fill="' + (opts.plus || '#5b6472') +
-          '" text-anchor="middle" dominant-baseline="central" font-family="' + UIFONT + '">+</text>');
+        parts.push(svgText('+', x + g.gap + g.plus / 2, g.pad + g.kh / 2, { size: 34, weight: 600 }, ' fill="' + (opts.plus || '#5b6472') + '"'));
         x += g.gap * 2 + g.plus;
       }
       const accent = c.hyper ? (opts.hyper || '#5b8cff') : null;
@@ -426,40 +476,81 @@
       const stroke = accent ? 'rgba(255,255,255,.25)' : (opts.keyBorder || 'rgba(255,255,255,.10)');
       parts.push('<rect x="' + x + '" y="' + g.pad + '" width="' + g.kw + '" height="' + g.kh +
         '" rx="' + g.r + '" fill="' + fill + '" stroke="' + stroke + '" stroke-width="1.5"/>');
-      const single = c.label.length <= 2;
       const ty = g.pad + g.kh / 2 + (c.sub ? -8 : 0);
-      parts.push('<text x="' + (x + g.kw / 2) + '" y="' + ty + '" font-size="' + (single ? 44 : 26) +
-        '" font-weight="600" fill="' + (accent ? (opts.hyperFg || '#fff') : (opts.fg || '#e8eaed')) +
-        '" text-anchor="middle" dominant-baseline="central" font-family="' + UIFONT + '">' + esc(c.label) + '</text>');
+      const fg = accent ? (opts.hyperFg || '#fff') : (opts.fg || '#e8eaed');
+      if (c.icon) {
+        parts.push(svgIcon(c.icon, x + (g.kw - ICON_CHIP) / 2, ty - ICON_CHIP / 2, ICON_CHIP, fg));
+      } else {
+        parts.push(svgText(c.label, x + g.kw / 2, ty, { size: c.label.length <= 2 ? 44 : 26, weight: 600 }, ' fill="' + fg + '"'));
+      }
       if (c.sub) {
-        parts.push('<text x="' + (x + g.kw / 2) + '" y="' + (g.pad + g.kh / 2 + 22) + '" font-size="16" font-weight="500" fill="' +
-          (accent ? 'rgba(255,255,255,.8)' : (opts.sub || '#8b93a1')) +
-          '" text-anchor="middle" dominant-baseline="central" font-family="' + UIFONT + '">' + esc(c.sub) + '</text>');
+        parts.push(svgText(c.sub, x + g.kw / 2, g.pad + g.kh / 2 + 22, { size: 16, weight: 500 },
+          accent ? ' fill="#ffffff" fill-opacity=".8"' : ' fill="' + (opts.sub || '#8b93a1') + '"'));
       }
       if (c.dbl) {
         const br = 15, bx = x + g.kw - br * 0.55, by = g.pad + br * 0.55;
         const badgeBg = opts.bg === 'transparent' ? '#0a0b0d' : (opts.bg || '#0c0d10');
         parts.push('<circle cx="' + bx + '" cy="' + by + '" r="' + br + '" fill="' + (opts.accent || opts.hyper || '#22d3ee') + '" stroke="' + badgeBg + '" stroke-width="2"/>');
-        parts.push('<text x="' + bx + '" y="' + by + '" font-size="17" font-weight="700" fill="' + (opts.hyperFg || '#0a0b0d') +
-          '" text-anchor="middle" dominant-baseline="central" font-family="' + UIFONT + '">2</text>');
+        parts.push(svgText('2', bx, by, { size: 17, weight: 700 }, ' fill="' + (opts.hyperFg || '#0a0b0d') + '"'));
       }
       x += g.kw;
     });
-    const svg = '<svg xmlns="http://www.w3.org/2000/svg" width="' + g.w + '" height="' + g.h +
+    return '<svg xmlns="http://www.w3.org/2000/svg" width="' + g.w + '" height="' + g.h +
       '" viewBox="0 0 ' + g.w + ' ' + g.h + '">' + parts.join('') + '</svg>';
-    download(fname + '.svg', 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg));
-  }
-  function download(name, href) {
-    const a = document.createElement('a');
-    a.download = name; a.href = href; a.click();
   }
 
+  /* ---- output: one rendered image, downloaded or copied ----
+     image() renders the current layout once — { name, svg } or { name, canvas, fmt } —
+     so the download and the clipboard always carry the same picture. */
+  function image(state, opts) {
+    opts = opts || {};
+    return opts.layout === 'board' ? boardImage(state, opts) : capsImage(state, opts);
+  }
+  function exportImage(state, opts) {
+    return ready(opts.format).then(() => {
+      const out = image(state, opts);
+      if (!out) return;
+      const a = document.createElement('a');
+      a.download = out.name;
+      a.href = out.svg
+        ? 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(out.svg)
+        : out.canvas.toDataURL(MIME[out.fmt] || 'image/png', 0.95);
+      a.click();
+    });
+  }
+  // Browsers only put PNG and SVG images on the clipboard (the app offers copy for those
+  // two only; a raster format would go as PNG). SVG also goes as text, which is what
+  // design tools (Figma…) read when pasting. Must run inside the click:
+  // the blobs are handed over as promises so Safari keeps the user gesture.
+  function copyImage(state, opts) {
+    const out = ready(opts.format).then(() => {
+      const o = image(state, opts);
+      if (!o) throw new Error('nothing to copy');
+      return o;
+    });
+    const item = {};
+    if (opts.format === 'svg') {
+      const blob = (type) => out.then((o) => new Blob([o.svg], { type }));
+      if (ClipboardItem.supports && ClipboardItem.supports('image/svg+xml')) item['image/svg+xml'] = blob('image/svg+xml');
+      item['text/plain'] = blob('text/plain');
+    } else {
+      item['image/png'] = out.then((o) => new Promise((res) => o.canvas.toBlob(res, 'image/png')));
+    }
+    return navigator.clipboard.write([new ClipboardItem(item)]);
+  }
+
+  // symbol keys spelled out: their codes hold characters filesystems reject (/ \) or
+  // that read badly in a name ("cmd--" for the minus key)
+  const SLUG = {
+    '`': 'backtick', '-': 'minus', '=': 'equal', '[': 'bracket-left', ']': 'bracket-right', '\\': 'backslash',
+    ';': 'semicolon', "'": 'quote', ',': 'comma', '.': 'period', '/': 'slash'
+  };
   // build a descriptive export filename (no extension):
   // KSV-<layout>-<background>_<shortcut>  e.g. "KSV-keycaps-dark_cmd-k"
   function exportName(layout, list, bgName) {
     const head = ['KSV', layout === 'board' ? 'keyboard' : 'keycaps'];
     if (bgName) head.push(bgName);
-    const shortcut = (list && list.length) ? list.map(c => c.code).join('-') : '';
+    const shortcut = (list && list.length) ? list.map(c => SLUG[c.code] || c.code).join('-') : '';
     return head.join('-') + (shortcut ? '_' + shortcut : '');
   }
 
@@ -483,92 +574,181 @@
     const n = parseInt(m[1], 16);
     return 'rgba(' + (n >> 16 & 255) + ',' + (n >> 8 & 255) + ',' + (n & 255) + ',' + a + ')';
   }
-  // a key surface. Idle: solid key base + hairline border. Selected: the shared
-  // ONSTATE paint — an accent gradient (ringFrom→ringTo) with a flat accent wash on
-  // top, plus a gradient ring and soft glow — matching the selector / preview .on state.
-  function boardSurface(ctx, x, y, w, h, r, on, opts, accent) {
-    if (on) {
-      const O = ONSTATE;
-      // 135°-equivalent accent gradient; used for both the fill base and the ring,
-      // mirroring the DOM border-box layer
-      const grad = ctx.createLinearGradient(x, y, x + w, y + h);
-      grad.addColorStop(0, hexA(accent, O.ringFrom)); grad.addColorStop(O.ringStop, hexA(accent, O.ringTo));
-      ctx.save(); roundRect(ctx, x, y, w, h, r); ctx.clip();
-      ctx.fillStyle = opts.keyBg || '#131519'; ctx.fillRect(x, y, w, h);    // solid key base behind the gradients
-      ctx.fillStyle = grad; ctx.fillRect(x, y, w, h);                       // accent gradient
-      ctx.globalAlpha = O.fill; ctx.fillStyle = accent; ctx.fillRect(x, y, w, h); // flat accent wash on top
-      ctx.restore();
-      ctx.save(); ctx.shadowColor = hexA(accent, O.glow); ctx.shadowBlur = h * 0.18;
-      roundRect(ctx, x, y, w, h, r); ctx.lineWidth = 1.5; ctx.strokeStyle = grad; ctx.stroke(); ctx.restore();
-    } else {
-      roundRect(ctx, x, y, w, h, r);
-      ctx.fillStyle = opts.keyBg || '#131519'; ctx.fill();
-      roundRect(ctx, x, y, w, h, r);
-      ctx.lineWidth = 1; ctx.strokeStyle = opts.keyBorder || 'rgba(255,255,255,.08)'; ctx.stroke();
-    }
+  /* ---- board painters: one drawing routine, two targets ----
+     boardImage describes the keyboard once, through a painter, in base units (1×).
+     canvasPainter draws those calls on a <canvas> at the export scale (PNG/JPG/WebP);
+     svgPainter writes the same calls as SVG markup, so the vector export can't drift
+     from the raster one. Paints are colour strings (#hex / rgba()) or a linear
+     gradient { x1, y1, x2, y2, stops: [[offset, colour], …] }. */
+  function canvasPainter(ctx, scale) {
+    const paint = (p) => {
+      if (typeof p === 'string') return p;
+      const g = ctx.createLinearGradient(p.x1, p.y1, p.x2, p.y2);
+      p.stops.forEach(([o, c]) => g.addColorStop(o, c));
+      return g;
+    };
+    const font = (t) => (t.weight || 400) + ' ' + t.size + 'px ' + UIFONT;
+    return {
+      rect(x, y, w, h, fill) { ctx.fillStyle = fill; ctx.fillRect(x, y, w, h); },
+      // rounded rect: `fills` painted in order, then an optional stroke with an optional glow
+      rrect(x, y, w, h, r, s) {
+        (s.fills || []).forEach((f) => { roundRect(ctx, x, y, w, h, r); ctx.fillStyle = paint(f); ctx.fill(); });
+        if (!s.stroke) return;
+        ctx.save();
+        // canvas shadows ignore the transform: scale the blur to keep the glow proportional
+        if (s.glow) { ctx.shadowColor = s.glow.color; ctx.shadowBlur = s.glow.blur * scale; }
+        roundRect(ctx, x, y, w, h, r); ctx.lineWidth = s.lw; ctx.strokeStyle = paint(s.stroke); ctx.stroke();
+        ctx.restore();
+      },
+      circle(cx, cy, r, s) {
+        ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2);
+        if (s.fill) { ctx.fillStyle = s.fill; ctx.fill(); }
+        if (s.stroke) { ctx.lineWidth = s.lw; ctx.strokeStyle = s.stroke; ctx.stroke(); }
+      },
+      // text vertically centred on y; align left / center / right
+      text(str, x, y, t) {
+        ctx.fillStyle = t.color; ctx.font = font(t); ctx.textBaseline = 'middle'; ctx.textAlign = t.align || 'center';
+        ctx.fillText(str, x, y);
+      },
+      icon(name, x, y, size, color) { drawIcon(ctx, name, x, y, size, color); },
+      group(alpha, fn) { ctx.save(); ctx.globalAlpha *= alpha; fn(); ctx.restore(); }
+    };
   }
-  // centered (or left-aligned) single-label key: letters, numbers, fn row, arrows.
-  // weight 400 matches the selector's .ksv-key font.
-  function bkey(ctx, x, y, w, h, r, on, opts, accent, label, fontSize, align) {
-    boardSurface(ctx, x, y, w, h, r, on, opts, accent);
-    if (!label) return;
-    ctx.fillStyle = opts.fg || '#d7dbe0'; ctx.textBaseline = 'middle';
-    ctx.font = '400 ' + fontSize + 'px ' + UIFONT;
-    if (align === 'left') { ctx.textAlign = 'left'; ctx.fillText(label, x + h * KEYSPEC.padX, y + h / 2); }
-    else { ctx.textAlign = 'center'; ctx.fillText(label, x + w / 2, y + h / 2 + 1); }
-  }
-  // a small bottom-anchored label (esc and similar) — left- or right-aligned, weight 500
-  function blabel(ctx, x, y, w, h, opts, text, ralign) {
-    const padX = h * KEYSPEC.padX, padY = h * KEYSPEC.padY, sSize = h * KEYSPEC.sub;
-    ctx.fillStyle = opts.fg || '#d7dbe0'; ctx.textBaseline = 'middle';
-    ctx.font = '500 ' + sSize + 'px ' + UIFONT;
-    ctx.textAlign = ralign ? 'right' : 'left';
-    ctx.fillText(text, ralign ? x + w - padX : x + padX, y + h - padY - sSize / 2);
-  }
-  // modifier key: corner glyph + sub-label, accent glyph when idle — mirrors the selector's .sm keys.
-  // glyph weight 400 (inherits .ksv-key), sub weight 500 (.sm .sub); all sizes from KEYSPEC.
-  function bmod(ctx, x, y, w, h, r, on, opts, accent, glyph, sub, ralign, accentGlyph, globe) {
-    boardSurface(ctx, x, y, w, h, r, on, opts, accent);
-    const padX = h * KEYSPEC.padX, padY = h * KEYSPEC.padY, gSize = h * KEYSPEC.glyph, sSize = h * KEYSPEC.sub;
-    const keyFg = opts.fg || '#d7dbe0';
-    const gColor = (!on && accentGlyph) ? accent : keyFg;
-    const gx = ralign ? x + w - padX : x + padX;
-    ctx.textBaseline = 'middle'; ctx.textAlign = ralign ? 'right' : 'left';
-    if (globe) {
-      drawGlobe(ctx, ralign ? x + w - padX - gSize / 2 : x + padX + gSize / 2, y + padY + gSize / 2, gSize / 2, gColor);
-    } else {
-      ctx.fillStyle = gColor; ctx.font = '400 ' + gSize + 'px ' + UIFONT;
-      ctx.fillText(glyph, gx, y + padY + gSize / 2);
-    }
-    ctx.fillStyle = keyFg; ctx.textAlign = ralign ? 'right' : 'left';
-    ctx.font = '500 ' + sSize + 'px ' + UIFONT;
-    ctx.fillText(sub, gx, y + h - padY - sSize / 2);
-  }
-  function drawGlobe(ctx, cx, cy, r, color) {
-    ctx.save();
-    ctx.strokeStyle = color; ctx.lineWidth = Math.max(0.7, r * 0.16);
-    ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.stroke();
-    ctx.beginPath(); ctx.ellipse(cx, cy, r * 0.42, r, 0, 0, Math.PI * 2); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(cx - r, cy); ctx.lineTo(cx + r, cy); ctx.stroke();
-    ctx.restore();
+  function svgPainter() {
+    const out = [], defs = [], glows = {};
+    let n = 0;
+    // SVG 1.1 consumers (Illustrator, older tools) don't read rgba(): split it into colour + opacity
+    const col = (c) => {
+      const m = /^rgba\(([^)]+)\)$/.exec(c);
+      if (!m) return { c, a: 1 };
+      const v = m[1].split(',').map((s) => s.trim());
+      return { c: 'rgb(' + v.slice(0, 3).join(',') + ')', a: +v[3] };
+    };
+    const attr = (k, p) => {
+      if (typeof p !== 'string') {
+        const id = 'g' + (n++);
+        defs.push('<linearGradient id="' + id + '" gradientUnits="userSpaceOnUse" x1="' + p.x1 + '" y1="' + p.y1 + '" x2="' + p.x2 + '" y2="' + p.y2 + '">' +
+          p.stops.map(([o, c]) => { const s = col(c); return '<stop offset="' + o + '" stop-color="' + s.c + '"' + (s.a < 1 ? ' stop-opacity="' + s.a + '"' : '') + '/>'; }).join('') +
+          '</linearGradient>');
+        return ' ' + k + '="url(#' + id + ')"';
+      }
+      const s = col(p);
+      return ' ' + k + '="' + s.c + '"' + (s.a < 1 ? ' ' + k + '-opacity="' + s.a + '"' : '');
+    };
+    // canvas shadowBlur is twice the Gaussian standard deviation
+    const glow = (g) => {
+      const key = g.color + '|' + g.blur;
+      if (!glows[key]) {
+        const id = 'f' + (n++), s = col(g.color);
+        defs.push('<filter id="' + id + '" x="-50%" y="-50%" width="200%" height="200%"><feDropShadow dx="0" dy="0" stdDeviation="' + g.blur / 2 +
+          '" flood-color="' + s.c + '" flood-opacity="' + s.a + '"/></filter>');
+        glows[key] = id;
+      }
+      return ' filter="url(#' + glows[key] + ')"';
+    };
+    return {
+      rect(x, y, w, h, fill) { out.push('<rect x="' + x + '" y="' + y + '" width="' + w + '" height="' + h + '"' + attr('fill', fill) + '/>'); },
+      rrect(x, y, w, h, r, s) {
+        const box = 'x="' + x + '" y="' + y + '" width="' + w + '" height="' + h + '" rx="' + r + '"';
+        (s.fills || []).forEach((f) => out.push('<rect ' + box + attr('fill', f) + '/>'));
+        if (s.stroke) out.push('<rect ' + box + ' fill="none"' + attr('stroke', s.stroke) + ' stroke-width="' + s.lw + '"' + (s.glow ? glow(s.glow) : '') + '/>');
+      },
+      circle(cx, cy, r, s) {
+        out.push('<circle cx="' + cx + '" cy="' + cy + '" r="' + r + '"' + (s.fill ? attr('fill', s.fill) : ' fill="none"') +
+          (s.stroke ? attr('stroke', s.stroke) + ' stroke-width="' + s.lw + '"' : '') + '/>');
+      },
+      text(str, x, y, t) { out.push(svgText(str, x, y, t, attr('fill', t.color))); },
+      icon(name, x, y, size, color) { out.push(svgIcon(name, x, y, size, color)); },
+      group(alpha, fn) { out.push('<g opacity="' + alpha + '">'); fn(); out.push('</g>'); },
+      svg(W, H) {
+        return '<svg xmlns="http://www.w3.org/2000/svg" width="' + W + '" height="' + H + '" viewBox="0 0 ' + W + ' ' + H + '">' +
+          (defs.length ? '<defs>' + defs.join('') + '</defs>' : '') + out.join('') + '</svg>';
+      }
+    };
   }
 
-  function exportBoard(state, opts) {
-    opts = opts || {};
-    const b = BOARD;
-    const fmt = opts.format === 'svg' ? 'png' : (opts.format || 'png');
-    const scale = opts.scale || 2;
-    const sel = state.sel, lr = !!state.lr;
-    const isOn = (c) => sel.has(c) || (!lr && PAIR[c] && sel.has(PAIR[c]));
+  // a key surface. Idle: solid key base + hairline border. Selected: the shared
+  // ONSTATE paint — the solid key base, an accent gradient (ringFrom→ringTo) and a
+  // flat accent wash on top, plus a gradient ring and soft glow — matching the
+  // selector / preview .on state.
+  function boardSurface(p, x, y, w, h, r, on, opts, accent) {
+    const base = opts.keyBg || '#131519';
+    if (on) {
+      const O = ONSTATE;
+      // 135°-equivalent accent gradient; used for both the fill and the ring,
+      // mirroring the DOM border-box layer
+      const grad = { x1: x, y1: y, x2: x + w, y2: y + h, stops: [[0, hexA(accent, O.ringFrom)], [O.ringStop, hexA(accent, O.ringTo)]] };
+      p.rrect(x, y, w, h, r, {
+        fills: [base, grad, hexA(accent, O.fill)],
+        stroke: grad, lw: 1.5, glow: { color: hexA(accent, O.glow), blur: h * 0.09 }
+      });
+    } else {
+      p.rrect(x, y, w, h, r, { fills: [base], stroke: opts.keyBorder || 'rgba(255,255,255,.08)', lw: 1 });
+    }
+  }
+  // centered (or left-aligned) single-label key: letters, numbers, fn row.
+  // weight 400 matches the selector's .ksv-key font.
+  function bkey(p, x, y, w, h, r, on, opts, accent, label, fontSize, align) {
+    boardSurface(p, x, y, w, h, r, on, opts, accent);
+    if (!label) return;
+    const t = { size: fontSize, weight: 400, color: opts.fg || '#d7dbe0' };
+    if (align === 'left') p.text(label, x + h * KEYSPEC.padX, y + h / 2, Object.assign(t, { align: 'left' }));
+    else p.text(label, x + w / 2, y + h / 2 + 1, t);
+  }
+  // a small bottom-anchored label (esc and similar) — left- or right-aligned, weight 500
+  function blabel(p, x, y, w, h, opts, text, ralign) {
+    const padX = h * KEYSPEC.padX, padY = h * KEYSPEC.padY, sSize = h * KEYSPEC.sub;
+    p.text(text, ralign ? x + w - padX : x + padX, y + h - padY - sSize / 2,
+      { size: sSize, weight: 500, color: opts.fg || '#d7dbe0', align: ralign ? 'right' : 'left' });
+  }
+  // modifier key: corner glyph (an ICONS name) + sub-label, accent glyph when idle — mirrors
+  // the selector's .sm keys. sub weight 500 (.sm .sub); all sizes from KEYSPEC.
+  function bmod(p, x, y, w, h, r, on, opts, accent, glyph, sub, ralign, accentGlyph) {
+    boardSurface(p, x, y, w, h, r, on, opts, accent);
+    const padX = h * KEYSPEC.padX, padY = h * KEYSPEC.padY, gSize = h * KEYSPEC.glyph, sSize = h * KEYSPEC.sub;
+    const keyFg = opts.fg || '#d7dbe0';
+    const gx = ralign ? x + w - padX : x + padX;
+    p.icon(glyph, ralign ? gx - gSize : gx, y + padY, gSize, (!on && accentGlyph) ? accent : keyFg);
+    p.text(sub, gx, y + h - padY - sSize / 2, { size: sSize, weight: 500, color: keyFg, align: ralign ? 'right' : 'left' });
+  }
+  // arrow key: surface + a centered ICONS glyph
+  function barrow(p, x, y, w, h, r, on, opts, accent, name, size) {
+    boardSurface(p, x, y, w, h, r, on, opts, accent);
+    p.icon(name, x + (w - size) / 2, y + (h - size) / 2, size, opts.fg || '#d7dbe0');
+  }
+
+  // full keyboard as PNG / JPG / WebP (canvas, at opts.scale) or SVG (vector, always transparent)
+  function boardImage(state, opts) {
+    const fmt = opts.format || 'png';
+    const vector = fmt === 'svg';
+    const scale = vector ? 1 : (opts.scale || 2);
     const d = boardDims(scale);
-    const keyH = d.keyH, colW = d.colW, r = d.r;
-    const cv = document.createElement('canvas'); cv.width = d.w; cv.height = d.h;
-    const ctx = cv.getContext('2d'); ctx.scale(scale, scale);
-    const bg = opts.bg === 'transparent'
+    const name = exportName('board', caps(state), opts.bgName) + '.' + fmt;
+    // jpg can't be transparent — fall back to the bg colour (or dark)
+    const bg = (vector || opts.bg === 'transparent')
       ? (fmt === 'jpg' ? (opts.jpgBg || '#0a0b0d') : null)
       : (opts.bg || '#0a0b0d');
-    if (bg) { ctx.fillStyle = bg; ctx.fillRect(0, 0, d.W, d.H); }
+    if (vector) {
+      const p = svgPainter();
+      drawBoard(p, state, opts, d, bg);
+      return { name, svg: p.svg(d.W, d.H) };
+    }
+    const cv = document.createElement('canvas'); cv.width = d.w; cv.height = d.h;
+    const ctx = cv.getContext('2d'); ctx.scale(scale, scale);
+    drawBoard(canvasPainter(ctx, scale), state, opts, d, bg);
+    return { name, canvas: cv, fmt };
+  }
+
+  // the keyboard itself, in base units, through a painter
+  function drawBoard(p, state, opts, d, bg) {
+    const b = BOARD;
+    const sel = state.sel, on = (c) => isOn(state, c);
+    // greyed-out keys (opts.dim, on by default): locked by the hyperkey or over the modifier limit
+    const dim = opts.dim !== false;
+    const keyH = d.keyH, colW = d.colW, r = d.r;
     const accent = opts.accent || opts.hyper || '#22d3ee';
+    const keyFg = opts.fg || '#d7dbe0';
+    if (bg) p.rect(0, 0, d.W, d.H, bg);
 
     // function row — esc (wide) + F1..F12 (square) + a blank Touch ID square at the far right
     let y = b.pad;
@@ -578,20 +758,18 @@
       const w = c === 'esc' ? 6 * colW + 5 * b.g : sqW;
       if (c === 'esc') {
         // esc reads like the other special keys: a small bottom-left label
-        boardSurface(ctx, fx, y, w, keyH, r, sel.has('esc'), opts, accent);
-        blabel(ctx, fx, y, w, keyH, opts, 'esc', false);
+        boardSurface(p, fx, y, w, keyH, r, sel.has('esc'), opts, accent);
+        blabel(p, fx, y, w, keyH, opts, 'esc', false);
       } else {
-        bkey(ctx, fx, y, w, keyH, r, sel.has(c), opts, accent, c, keyH * KEYSPEC.fnKey, 'center');
+        bkey(p, fx, y, w, keyH, r, sel.has(c), opts, accent, c, keyH * KEYSPEC.fnKey, 'center');
       }
       fx += w + b.g;
     });
     // Touch ID — blank, deactivated-looking key with a faint sensor ring
-    ctx.save(); ctx.globalAlpha = 0.4;
-    boardSurface(ctx, fx, y, sqW, keyH, r, false, opts, accent);
-    ctx.lineWidth = Math.max(1, keyH * 0.022);
-    ctx.strokeStyle = opts.keyBorder || 'rgba(255,255,255,.18)';
-    ctx.beginPath(); ctx.arc(fx + sqW / 2, y + keyH / 2, keyH * 0.2, 0, Math.PI * 2); ctx.stroke();
-    ctx.restore();
+    p.group(0.4, () => {
+      boardSurface(p, fx, y, sqW, keyH, r, false, opts, accent);
+      p.circle(fx + sqW / 2, y + keyH / 2, keyH * 0.2, { stroke: opts.keyBorder || 'rgba(255,255,255,.18)', lw: Math.max(1, keyH * 0.022) });
+    });
     y += keyH + b.rowGap;
 
     // main rows
@@ -603,52 +781,45 @@
         if (code === 'arrows') {
           const colw = (w - 2 * b.g) / 3, cellH = (keyH - b.g) / 2;
           const ar = keyH * KEYSPEC.radius * 0.6, af = keyH * KEYSPEC.sub;
-          bkey(ctx, x + colw + b.g, y, colw, cellH, ar, isOn('up'), opts, accent, G.up, af);
-          bkey(ctx, x, y + cellH + b.g, colw, cellH, ar, isOn('left'), opts, accent, G.left, af);
-          bkey(ctx, x + colw + b.g, y + cellH + b.g, colw, cellH, ar, isOn('down'), opts, accent, G.down, af);
-          bkey(ctx, x + 2 * (colw + b.g), y + cellH + b.g, colw, cellH, ar, isOn('right'), opts, accent, G.right, af);
+          barrow(p, x + colw + b.g, y, colw, cellH, ar, on('up'), opts, accent, 'up', af);
+          barrow(p, x, y + cellH + b.g, colw, cellH, ar, on('left'), opts, accent, 'left', af);
+          barrow(p, x + colw + b.g, y + cellH + b.g, colw, cellH, ar, on('down'), opts, accent, 'down', af);
+          barrow(p, x + 2 * (colw + b.g), y + cellH + b.g, colw, cellH, ar, on('right'), opts, accent, 'right', af);
           x += w + b.g; return;
         }
-        const on = isOn(code);
-        const locked = !!(state.locked && state.locked.has(code));
-        if (locked) ctx.globalAlpha = 0.28;
-        if (code === 'space') {
-          bkey(ctx, x, y, w, keyH, r, on, opts, accent, '', 20);
-        } else if (code === 'fn') {
-          // like a real Mac: globe icon bottom-left, "fn" text top-right
-          boardSurface(ctx, x, y, w, keyH, r, on, opts, accent);
-          const padX = keyH * KEYSPEC.padX, padY = keyH * KEYSPEC.padY;
-          const gSize = keyH * KEYSPEC.glyph, sSize = keyH * KEYSPEC.sub, keyFg = opts.fg || '#d7dbe0';
-          drawGlobe(ctx, x + padX + gSize / 2, y + keyH - padY - gSize / 2, gSize / 2, on ? keyFg : accent);
-          ctx.fillStyle = keyFg; ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
-          ctx.font = '500 ' + sSize + 'px ' + UIFONT;
-          ctx.fillText('fn', x + w - padX, y + padY + sSize / 2);
-        } else if (cls && /\bsm\b/.test(cls)) {
-          const ralign = /\bralign\b/.test(cls), accentGlyph = /\b(modkey|hyper)\b/.test(cls);
-          let glyph = label, slabel = sub;
-          if (code === 'caps' && state.hyper) { glyph = '❖'; slabel = 'hyper'; }
-          bmod(ctx, x, y, w, keyH, r, on, opts, accent, glyph, slabel, ralign, accentGlyph, code === 'fn');
-        } else {
-          bkey(ctx, x, y, w, keyH, r, on, opts, accent, label, keyH * KEYSPEC.letter);
-        }
-        if (isDbl(state, code)) {
-          const br = keyH * 0.16, bx = x + w - br * 0.6, by = y + br * 0.6;
-          ctx.beginPath(); ctx.arc(bx, by, br, 0, Math.PI * 2);
-          ctx.fillStyle = accent; ctx.fill();
-          ctx.lineWidth = 1.5; ctx.strokeStyle = bg || '#0a0b0d'; ctx.stroke();
-          ctx.fillStyle = opts.hyperFg || '#0a0b0d'; ctx.font = '700 ' + (br * 1.1) + 'px ' + UIFONT;
-          ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-          ctx.fillText('2', bx, by + 0.5);
-        }
-        if (locked) ctx.globalAlpha = 1;
+        const isSel = on(code);
+        const grey = dim && ((state.locked && state.locked.has(code)) || S.maxed(state, code));
+        p.group(grey ? 0.28 : 1, () => {
+          if (code === 'space') {
+            bkey(p, x, y, w, keyH, r, isSel, opts, accent, '', 20);
+          } else if (code === 'fn') {
+            // like a real Mac: globe icon bottom-left, "fn" text top-right
+            boardSurface(p, x, y, w, keyH, r, isSel, opts, accent);
+            const padX = keyH * KEYSPEC.padX, padY = keyH * KEYSPEC.padY;
+            const gSize = keyH * KEYSPEC.glyph, sSize = keyH * KEYSPEC.sub;
+            p.icon('globe', x + padX, y + keyH - padY - gSize, gSize, isSel ? keyFg : accent);
+            p.text('fn', x + w - padX, y + padY + sSize / 2, { size: sSize, weight: 500, color: keyFg, align: 'right' });
+          } else if (cls && /\bsm\b/.test(cls)) {
+            const ralign = /\bralign\b/.test(cls), accentGlyph = /\b(modkey|hyper)\b/.test(cls);
+            let glyph = label, slabel = sub;
+            if (code === 'caps' && state.hyper) { glyph = 'hyper'; slabel = 'hyper'; }
+            bmod(p, x, y, w, keyH, r, isSel, opts, accent, glyph, slabel, ralign, accentGlyph);
+          } else {
+            bkey(p, x, y, w, keyH, r, isSel, opts, accent, label, keyH * KEYSPEC.letter);
+          }
+          if (isDbl(state, code)) {
+            const br = keyH * 0.16, bx = x + w - br * 0.6, by = y + br * 0.6;
+            p.circle(bx, by, br, { fill: accent, stroke: bg || '#0a0b0d', lw: 1.5 });
+            p.text('2', bx, by + 0.5, { size: br * 1.1, weight: 700, color: opts.hyperFg || '#0a0b0d' });
+          }
+        });
         x += w + b.g;
       });
       y += keyH + b.rowGap;
     });
-    download(exportName('board', caps(state), opts.bgName) + '.' + fmt, cv.toDataURL(MIME[fmt] || 'image/png', 0.95));
   }
 
-  window.KSV = { buildKeyboard, buildBoardPreview, renderCaps, caps, exportPNG, exportBoard, exportSize, boardSize, paint, HYPER, G, KEYBG, COLS };
+  window.KSV = { buildKeyboard, buildBoardPreview, renderCaps, caps, render: image, exportImage, copyImage, exportSize, boardSize, canEncode, paint, icon, HYPER, KEYBG, COLS };
   function roundRect(ctx, x, y, w, h, r) {
     ctx.beginPath();
     ctx.moveTo(x + r, y);
