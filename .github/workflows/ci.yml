@@ -14,4 +14,4 @@ jobs:
       - name: Syntax
         run: for f in site/*.js tools/*.mjs tools/*.js; do node --check "$f" || exit 1; done
       - name: Tests (selection rules, SVG snapshots)
-        run: node --test tests/
+        run: node --test 'tests/*.test.mjs'

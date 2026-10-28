@@ -1,6 +1,6 @@
 // SVG export snapshots: the painter output is a deterministic string, so any change to
 // what gets drawn shows up here. Review the diff, then accept it with
-//   UPDATE_SNAPSHOTS=1 node --test tests/
+//   UPDATE_SNAPSHOTS=1 node --test 'tests/*.test.mjs'
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync, writeFileSync, existsSync } from 'node:fs';
