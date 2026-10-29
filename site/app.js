@@ -12,15 +12,24 @@
   const HYPER_OPTS = [['off', 'off'],
     ['caom', icons(['ctrl', 'opt', 'cmd']), false, 'control option command'],
     ['scaom', icons(['shift', 'ctrl', 'opt', 'cmd']), false, 'shift control option command']];
+  // the same on a PC, where ⌃⌥⌘ read ctrl, alt and the Windows key (super on Linux)
+  const hyperOptsPC = (os) => {
+    const k = os === 'linux' ? 'super' : 'win', spoken = os === 'linux' ? 'super' : 'windows';
+    return [['off', 'off'], ['caom', 'ctrl alt ' + k, false, 'control alt ' + spoken],
+      ['scaom', 'shift ctrl alt ' + k, false, 'shift control alt ' + spoken]];
+  };
   // export formats; one the browser's canvas can't encode is shown disabled (see init)
   const FORMATS = ['png', 'jpg', 'webp', 'svg'];
   // formats the clipboard takes (checked in Chrome 152: JPEG and WebP are refused)
   const COPYABLE = new Set(['png', 'svg']);
   // raster export scale: 1× is the export's base size, the slider multiplies it
   const SCALE = { min: 1, max: 4, step: 0.5 };
+  // the keyboard case leans toward the cursor, barely: the most it turns, in degrees, about
+  // each axis, and the perspective it's seen through (px)
+  const TILT = { x: 1.6, y: 1, perspective: 1600 };
   const HYPER_LOCK = {
-    caom: ['ctrl', 'opt', 'cmd', 'rcmd', 'ropt'],
-    scaom: ['ctrl', 'opt', 'cmd', 'rcmd', 'ropt', 'lshift', 'rshift']
+    caom: ['ctrl', 'rctrl', 'opt', 'cmd', 'rcmd', 'ropt'],
+    scaom: ['ctrl', 'rctrl', 'opt', 'cmd', 'rcmd', 'ropt', 'lshift', 'rshift']
   };
   // canvas and export colours come from the engine's theme table (KSV.THEMES): dark / light
   const THEMES = KSV.THEMES;
@@ -55,7 +64,7 @@
   /* ---- state ---- */
   const encodable = new Set(); // formats this browser can export (filled in init)
   // engine state (shared with KSV)
-  const state = { sel: new Set(['cmd', 'k']), dbl: new Set(), lr: false, hyper: false, locked: new Set() };
+  const state = { kb: 'mac-us', look: 'printed', superKey: 'win-logo', sel: new Set(['cmd', 'k']), dbl: new Set(), lr: false, hyper: false, locked: new Set() };
   // UI state
   // PNG by default: crisp key edges and labels, and the only raster format the clipboard takes.
   // frame / grid: the page's keyboard case and background grid, drawn in the keyboard export
@@ -65,7 +74,7 @@
   // keycaps only: plus, where the "+" goes (between all keys, before the trigger key, none);
   // glow, which keys get the selected look (all, the modifiers, the trigger key, none)
   const ui = { layout: 'board', theme: 'dark', bg: 'fill', ext: 'png', scale: 2, frame: true, grid: true, surface: 'translucent',
-    plus: 'key', glow: 'mods', accent: ACCENTS[0], hyper: 'off', lr: false, combo: false };
+    plus: 'key', glow: 'mods', accent: ACCENTS[0], hyper: 'off', lr: false, combo: false, kb: 'mac-us', look: 'printed', pcKey: 'win-logo', rail: true };
 
   /* ---- persistence: remember UI options across reloads (NOT the key selection) ---- */
   const STORE = 'ksv-ui-v1';
@@ -73,7 +82,7 @@
   function persist() {
     const json = JSON.stringify({
       layout: ui.layout, theme: ui.theme, bg: ui.bg, ext: ui.ext, scale: ui.scale, frame: ui.frame, grid: ui.grid,
-      surface: ui.surface, plus: ui.plus, glow: ui.glow, accent: ui.accent, hyper: ui.hyper, lr: ui.lr, combo: ui.combo
+      surface: ui.surface, plus: ui.plus, glow: ui.glow, accent: ui.accent, hyper: ui.hyper, lr: ui.lr, combo: ui.combo, kb: ui.kb, look: ui.look, pcKey: ui.pcKey, rail: ui.rail
     });
     if (json === saved) return; // a key click changes nothing here: no write
     try { localStorage.setItem(STORE, json); saved = json; }
@@ -95,6 +104,12 @@
     if (['off', 'caom', 'scaom'].includes(s.hyper)) ui.hyper = s.hyper;
     if (typeof s.lr === 'boolean') ui.lr = s.lr;
     if (typeof s.combo === 'boolean') ui.combo = s.combo;
+    if (KSV.KBS.includes(s.kb)) ui.kb = s.kb;
+    // (the older 'default' and 'physical' fall back to the printed look, now the default)
+    if (KSV.LOOKS.includes(s.look)) ui.look = s.look;
+    if (KSV.SUPERS.includes(s.pcKey)) ui.pcKey = s.pcKey;
+    else if (s.pcKey === 'linux') ui.pcKey = 'super'; // before the super key's icons
+    if (typeof s.rail === 'boolean') ui.rail = s.rail;
     if (typeof s.frame === 'boolean') ui.frame = s.frame;
     if (typeof s.grid === 'boolean') ui.grid = s.grid;
     if (['solid', 'translucent'].includes(s.surface)) ui.surface = s.surface;
@@ -138,7 +153,7 @@
     caps.classList.toggle('is-hyper', active);
     const cap = caps.querySelector('.cap'), sub = caps.querySelector('.sub');
     if (cap) cap.innerHTML = KSV.icon(active ? 'hyper' : 'caps');
-    if (sub) sub.textContent = active ? 'hyper' : 'caps';
+    if (sub) sub.textContent = active ? 'hyper' : caps.dataset.sub;
     caps.setAttribute('aria-label', active ? 'hyperkey' : 'caps lock');
   }
 
@@ -226,7 +241,9 @@
       '--canvas-bg': T.bg, '--check-base': T.checkBase, '--check': T.check, '--grid-color': T.grid,
       '--frame-stroke': T.frame.stroke, '--keyFg': T.keyFg, '--keyBorder': T.keyLine,
       '--muted': T.plus,
-      '--accent-ink': KSV.ink(ui.accent, ui.theme)
+      '--accent-ink': KSV.ink(ui.accent, ui.theme),
+      // the keyboard case's fill, for the chrome that sits on the canvas like it (.rail-btn)
+      '--case-bg': T.frame[glass ? 'translucent' : 'solid']
     };
     Object.keys(vars).forEach((k) => root.style.setProperty(k, vars[k]));
     document.documentElement.style.background = T.bg;
@@ -257,10 +274,87 @@
 
   /* ---- segmented controls ---- */
   function renderHyper() {
-    renderSeg($('hyperSeg'), HYPER_OPTS, ui.hyper, false, (v) => { ui.hyper = v; renderHyper(); refresh(); });
+    const os = ui.kb.split('-')[0];
+    renderSeg($('hyperSeg'), os === 'mac' ? HYPER_OPTS : hyperOptsPC(os), ui.hyper, false, (v) => { ui.hyper = v; renderHyper(); refresh(); });
   }
   function renderLr() {
     renderSeg($('lrSeg'), [['off', 'off'], ['on', 'on']], ui.lr ? 'on' : 'off', false, (v) => setLr(v === 'on'));
+  }
+  /* ---- the keyboard's dropdowns: a button and a listbox in the page's style ----
+     picker(root, aria label, [[value, label]…], value, onChange) renders one; arrows move
+     through the options, Enter / Space picks, Escape or a click elsewhere closes. */
+  // an option may show an icon before its label, and name both for screen readers
+  // ([value, label, icon, spoken name]: the icon itself is aria-hidden)
+  const optLabel = ([, l, ic]) => (ic ? KSV.icon(ic) : '') + '<span>' + l + '</span>';
+  const optName = (opt) => opt[3] || opt[1];
+  function picker(root, label, opts, value, onChange) {
+    const cur = opts.find(([v]) => v === value) || opts[0];
+    root.innerHTML = '';
+    const btn = el('button', 'pick-btn', optLabel(cur) + KSV.icon('chevron'));
+    btn.setAttribute('aria-haspopup', 'listbox');
+    btn.setAttribute('aria-expanded', 'false');
+    btn.setAttribute('aria-label', label + ': ' + optName(cur));
+    const list = el('div', 'pick-list');
+    list.setAttribute('role', 'listbox');
+    list.setAttribute('aria-label', label);
+    list.hidden = true;
+    opts.forEach((opt) => {
+      const v = opt[0], o = el('button', 'pick-opt' + (v === cur[0] ? ' on' : ''), optLabel(opt));
+      o.setAttribute('role', 'option');
+      if (opt[3]) o.setAttribute('aria-label', opt[3]);
+      o.setAttribute('aria-selected', v === cur[0]);
+      o.tabIndex = -1;
+      o.onclick = () => { open(false); btn.focus(); if (v !== cur[0]) onChange(v); };
+      list.appendChild(o);
+    });
+    const items = () => [...list.children];
+    const open = (on) => {
+      list.hidden = !on; btn.setAttribute('aria-expanded', on);
+      if (on) items().find((o) => o.classList.contains('on')).focus();
+    };
+    btn.onclick = () => open(list.hidden);
+    btn.onkeydown = (e) => { if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); open(true); } };
+    list.onkeydown = (e) => {
+      const all = items(), i = all.indexOf(document.activeElement);
+      if (e.key === 'Escape' || e.key === 'Tab') { open(false); if (e.key === 'Escape') btn.focus(); }
+      else if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+        e.preventDefault();
+        all[(i + (e.key === 'ArrowDown' ? 1 : all.length - 1)) % all.length].focus();
+      }
+    };
+    root.append(btn, list);
+  }
+  // an open list closes on a click elsewhere, or as soon as the keyboard takes the pointer or
+  // the focus (it would otherwise wait, dimmed, behind it)
+  function closePickers(keep) {
+    document.querySelectorAll('.kb-pick').forEach((p) => {
+      if (keep && p.contains(keep)) return;
+      const list = p.querySelector('.pick-list');
+      if (list && !list.hidden) { list.hidden = true; p.querySelector('.pick-btn').setAttribute('aria-expanded', 'false'); }
+    });
+  }
+  document.addEventListener('click', (e) => closePickers(e.target));
+  panel.addEventListener('mouseenter', () => closePickers());
+  panel.addEventListener('focusin', () => closePickers());
+  // keyboard, language, and the keys' look: a MacBook's modifiers (KSV's labels or the printed
+  // ones), or a PC's super key (the Windows logo, or super as on Linux: the `linux-*` layouts,
+  // with Tux, Framework's gear or no icon)
+  const pcOf = (superKey) => (/^win/.test(superKey) ? 'win' : 'linux');
+  function renderPickers() {
+    const [os, lang] = ui.kb.split('-'), mac = os === 'mac';
+    const kbOf = (o, l) => (o === 'mac' ? 'mac' : pcOf(ui.pcKey)) + '-' + l;
+    picker($('osPick'), 'keyboard', [['mac', 'MacBook'], ['pc', 'Windows / Linux']], mac ? 'mac' : 'pc', (v) => setKb(kbOf(v, lang)));
+    picker($('langPick'), 'keyboard language', [['us', 'QWERTY US'], ['fr', 'AZERTY FR']], lang, (v) => setKb(kbOf(mac ? 'mac' : 'pc', v)));
+    if (mac) picker($('lookPick'), 'modifier keys', [['printed', 'Default modifiers'], ['custom', 'Custom modifiers']], ui.look, (v) => {
+      ui.look = state.look = v; renderPickers(); mountKeyboard(); alignToGrid(); refresh();
+    });
+    else picker($('lookPick'), 'super key', [
+      ['win', 'logo + win', 'win', 'Windows logo and win'], ['win-logo', 'logo', 'win', 'Windows logo'],
+      ['tux', 'logo + super', 'tux', 'Linux logo and super'], ['tux-logo', 'logo', 'tux', 'Linux logo'],
+      ['framework', 'logo + super', 'framework', 'Framework logo and super'], ['framework-logo', 'logo', 'framework', 'Framework logo'],
+      ['super', 'super', null, 'super, no logo']], ui.pcKey, (v) => {
+      ui.pcKey = state.superKey = v; setKb(pcOf(v) + '-' + lang);
+    });
   }
   function renderCombo() {
     renderSeg($('comboSeg'), [['off', 'off'], ['on', 'on']], ui.combo ? 'on' : 'off', false, (v) => setCombo(v === 'on'));
@@ -323,9 +417,18 @@
     ui.layout = v;
     renderLayout(); renderShow(); renderSurface(); renderCapsOpts(); refresh();
   }
-  function cycleLayout() {
-    changeLayout(LAYOUTS[(LAYOUTS.indexOf(ui.layout) + 1) % LAYOUTS.length]);
+  // the rail folds away, the keyboard takes its room (the stage's ResizeObserver refits it)
+  // (at load, without the fold's animation)
+  function renderRail(instant) {
+    const b = $('railBtn');
+    if (instant) root.style.transition = b.style.transition = 'none';
+    root.classList.toggle('rail-off', !ui.rail);
+    root.querySelector('.rail').inert = !ui.rail;
+    b.setAttribute('aria-expanded', ui.rail);
+    b.setAttribute('aria-label', ui.rail ? 'hide the sidebar' : 'show the sidebar');
+    if (instant) { void root.offsetWidth; root.style.transition = b.style.transition = ''; }
   }
+  function toggleRail() { ui.rail = !ui.rail; renderRail(); persist(); }
   function changeExt(v) {
     ui.ext = v;
     if (v === 'jpg' && ui.bg === 'trans') ui.bg = 'fill';
@@ -367,6 +470,24 @@
     }
     renderCombo(); refresh();
   }
+  // keyboard layout: the keyboard is rebuilt; keys this layout lacks fold into their
+  // left-hand twin (right ctrl / right cmd) or drop (the ISO key)
+  function setKb(v) {
+    if (!KSV.KBS.includes(v)) return;
+    ui.kb = v; state.kb = v;
+    const fold = (set) => new Set([...set].map((c) => KSV.hasKey(v, c) ? c : KSV.hasKey(v, KSVSelect.canon(c)) ? KSVSelect.canon(c) : null).filter(Boolean));
+    state.sel = fold(state.sel); state.dbl = fold(state.dbl);
+    mountKeyboard();
+    alignToGrid(); // the new keyboard has no key size yet
+    renderHyper(); renderPickers();
+    refresh();
+  }
+  function mountKeyboard() {
+    kbMount.innerHTML = '';
+    kbMount.appendChild(KSV.buildKeyboard(state, refresh));
+    if (spot) spot.remove();
+    buildSpotLayer();
+  }
   function reset() {
     state.sel = new Set(); state.dbl = new Set();
     refresh();
@@ -389,7 +510,7 @@
       bgName: ui.theme + (trans ? '-alpha' : '')
     };
   }
-  function exportNow() { if (!exportBtn.disabled) KSV.exportImage(state, exportOpts()); }
+  function exportNow() { if (!exportBtn.disabled) KSV.exportImage(state, exportOpts()).then((r) => showShot(r, 'exported')); }
   // copy the same image to the clipboard; the button's icon confirms for a moment
   let copyTimer;
   function copyNow() {
@@ -401,8 +522,67 @@
       clearTimeout(copyTimer);
       copyTimer = setTimeout(() => { copyBtn.classList.remove('is-done'); updateMeta(); }, 1400);
     };
-    try { KSV.copyImage(state, exportOpts()).then(() => done(true), () => done(false)); }
+    try { KSV.copyImage(state, exportOpts()).then((r) => { done(true); showShot(r, 'copied'); }, () => done(false)); }
     catch (e) { done(false); }
+  }
+
+  /* ---- what went out, when the rail (and its preview) is folded away ----
+     A thumbnail of the exported or copied image, bottom right, gone after SHOT_MS (held while
+     the pointer is on it). A click opens it large; a click or Escape closes that. */
+  const SHOT_MS = 4000;
+  let shot = null;
+  function showShot(r, verb) {
+    if (ui.rail || !r || !r.blob) return;
+    dropShot(true);
+    const url = URL.createObjectURL(r.blob), trans = effBg() === 'trans';
+    const b = el('button', 'shot' + (trans ? ' is-trans' : ''));
+    b.setAttribute('aria-label', verb + ' ' + r.name + ', open the preview');
+    const img = el('img'); img.src = url; img.alt = '';
+    b.append(img, el('span', 'shot-cap', verb));
+    root.appendChild(b);
+    let timer;
+    const later = () => { clearTimeout(timer); timer = setTimeout(() => dropShot(), SHOT_MS); };
+    shot = { b, url, name: r.name, trans, stop: () => clearTimeout(timer) };
+    b.onmouseenter = shot.stop;
+    b.onmouseleave = later;
+    b.onclick = () => { shot.stop(); openShot(); };
+    requestAnimationFrame(() => b.classList.add('in'));
+    later();
+  }
+  // now: replaced by a newer one (no exit animation)
+  function dropShot(now) {
+    if (!shot) return;
+    const s = shot;
+    shot = null;
+    s.stop();
+    const gone = () => { s.b.remove(); URL.revokeObjectURL(s.url); };
+    if (now) return gone();
+    s.b.classList.remove('in');
+    setTimeout(gone, 400);
+  }
+  function openShot() {
+    const s = shot, back = document.activeElement;
+    const v = el('div', 'shot-view');
+    v.setAttribute('role', 'dialog');
+    v.setAttribute('aria-modal', 'true');
+    v.setAttribute('aria-label', s.name);
+    v.tabIndex = -1;
+    const fig = el('div', 'shot-fig' + (s.trans ? ' is-trans' : ''));
+    const img = el('img'); img.src = s.url; img.alt = s.name;
+    fig.appendChild(img);
+    v.append(fig, el('div', 'shot-name', s.name));
+    const close = () => {
+      v.classList.remove('in');
+      document.removeEventListener('keydown', onKey, true);
+      setTimeout(() => { v.remove(); dropShot(); }, 200);
+      if (back && back.focus) back.focus();
+    };
+    const onKey = (e) => { if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); close(); } };
+    v.onclick = close;
+    document.addEventListener('keydown', onKey, true);
+    root.appendChild(v);
+    requestAnimationFrame(() => v.classList.add('in'));
+    v.focus();
   }
 
   /* ---- key sizing: make letter/number keys (span 4) render as true squares ---- */
@@ -430,21 +610,43 @@
     spot.querySelector('.ksv-kb').inert = true;
     panel.appendChild(spot);
   }
+  // the case leans toward the cursor (startGlow): measurements that must not see the lean
+  // are taken with it off for the moment
+  function untilted(fn) {
+    const t = panel.style.transform;
+    panel.style.transform = 'none';
+    try { return fn(); } finally { panel.style.transform = t; }
+  }
+  // where the case sits in the app root, for the light's coordinates (startGlow)
+  let panelAt = { x: 0, y: 0 };
   function syncSpotLayer() {
     if (!spot) return;
     const real = kbEl(), copy = spot.querySelector('.ksv-kb');
     copy.style.cssText = real.style.cssText;
-    const r = real.getBoundingClientRect(), o = spot.getBoundingClientRect(); // sub-pixel exact
-    Object.assign(copy.style, { left: r.left - o.left + 'px', top: r.top - o.top + 'px', width: r.width + 'px' });
-    const keys = real.querySelectorAll('.ksv-key'), ghosts = copy.querySelectorAll('.ksv-key');
-    keys.forEach((k, i) => { if (ghosts[i]) ghosts[i].className = k.className; });
+    untilted(() => {
+      const r = real.getBoundingClientRect(), o = spot.getBoundingClientRect(); // sub-pixel exact
+      const p = panel.getBoundingClientRect(), a = root.getBoundingClientRect();
+      panelAt = { x: p.left - a.left, y: p.top - a.top };
+      Object.assign(copy.style, { left: r.left - o.left + 'px', top: r.top - o.top + 'px', width: r.width + 'px' });
+      const keys = real.querySelectorAll('.ksv-key'), ghosts = copy.querySelectorAll('.ksv-key');
+      keys.forEach((k, i) => {
+        const g = ghosts[i];
+        if (!g) return;
+        g.className = k.className;
+        // each ring's light is one gradient in the case's coordinates (styles.css .spot-layer)
+        const kr = k.getBoundingClientRect();
+        g.style.setProperty('--kx', kr.left - p.left + 'px');
+        g.style.setProperty('--ky', kr.top - p.top + 'px');
+      });
+    });
   }
 
   /* ---- the background grid lines up with the keyboard case ----
      The case is sized to whole grid cells (+1 px so its right and bottom borders land on a
      line too): the content column snaps its width down, the case pads its height up, split
      top and bottom. Then the grid's origin moves onto the case's top-left corner. */
-  function alignToGrid() {
+  function alignToGrid() { untilted(alignCase); }
+  function alignCase() {
     const cell = KSV.GRID.step, stage = root.querySelector('.stage'), cs = getComputedStyle(stage);
     const avail = Math.min(1180, stage.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight));
     root.style.setProperty('--content-max', Math.floor((avail - 1) / cell) * cell + 1 + 'px');
@@ -471,6 +673,8 @@
     const calm = !!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches);
     const lit = root.querySelector('.grid-lit'), stage = root.querySelector('.stage');
     let tx = 50, ty = 50, cx = 50, cy = 50, sz = 90, vx = 0, vy = 0, ltx = 50, lty = 50, raf = 0;
+    // the case's lean: toward the cursor, so the keys it nears come forward (degrees, eased)
+    let rx = 0, ry = 0, trx = 0, try_ = 0;
     const clamp = (v) => Math.max(-7, Math.min(7, v));
     const tick = () => {
       if (calm) { cx = ltx = tx; cy = lty = ty; }
@@ -485,12 +689,15 @@
       lit.style.setProperty('--glow-r', sz + 'px');
       lit.style.setProperty('--vx', clamp(vx * 0.7) + 'px');
       lit.style.setProperty('--vy', clamp(vy * 0.7) + 'px');
-      // the same light on the case's and keys' hairlines, in viewport px (see styles.css)
+      // the same light on the case's and keys' hairlines, in the case's px (see styles.css)
       const a = root.getBoundingClientRect();
-      panel.style.setProperty('--spot-x', a.left + cx / 100 * a.width + 'px');
-      panel.style.setProperty('--spot-y', a.top + cy / 100 * a.height + 'px');
+      panel.style.setProperty('--spot-x', cx / 100 * a.width - panelAt.x + 'px');
+      panel.style.setProperty('--spot-y', cy / 100 * a.height - panelAt.y + 'px');
       panel.style.setProperty('--spot-r', sz * 1.2 + 'px');
-      const settled = gap < 0.05 && Math.abs(vx) < 0.01 && Math.abs(vy) < 0.01 && Math.abs(target - sz) < 0.5;
+      rx += (trx - rx) * 0.08; ry += (try_ - ry) * 0.08;
+      const leaning = Math.abs(rx) > 0.002 || Math.abs(ry) > 0.002 || trx || try_;
+      panel.style.transform = leaning ? 'perspective(' + TILT.perspective + 'px) rotateX(' + rx + 'deg) rotateY(' + ry + 'deg)' : '';
+      const settled = !leaning && gap < 0.05 && Math.abs(vx) < 0.01 && Math.abs(vy) < 0.01 && Math.abs(target - sz) < 0.5;
       raf = settled ? 0 : requestAnimationFrame(tick);
     };
     const wake = () => { if (!raf) raf = requestAnimationFrame(tick); };
@@ -502,10 +709,19 @@
       wake();
     });
     root.addEventListener('mouseleave', () => { tx = 50; ty = 50; panel.style.setProperty('--spot-o', 0); wake(); });
+    // the lean stays with reduced motion too: a degree or so, eased (a deliberate choice)
+    panel.addEventListener('mousemove', (e) => {
+      const r = untilted(() => panel.getBoundingClientRect());
+      const nx = (e.clientX - r.left) / r.width * 2 - 1, ny = (e.clientY - r.top) / r.height * 2 - 1;
+      // rotateX > 0 brings the bottom edge forward, rotateY > 0 the left one
+      trx = TILT.x * ny; try_ = -TILT.y * nx;
+      wake();
+    });
+    panel.addEventListener('mouseleave', () => { trx = try_ = 0; wake(); });
     wake();
   }
 
-  /* ---- app hotkeys: ⇧R reset, ⇧L change layout, ⇧D download, ⇧C copy (physical keys never activate keys) ---- */
+  /* ---- app hotkeys: ⇧R reset, ⇧D download, ⇧C copy, ⇧S sidebar (physical keys never activate keys) ---- */
   function bindHotkeys() {
     window.addEventListener('keydown', (e) => {
       if (e.repeat) return;
@@ -517,7 +733,7 @@
       if (key === 'd') { e.preventDefault(); exportNow(); }
       else if (key === 'c') { e.preventDefault(); copyNow(); }
       else if (key === 'r') { e.preventDefault(); reset(); }
-      else if (key === 'l') { e.preventDefault(); cycleLayout(); }
+      else if (key === 's') { e.preventDefault(); toggleRail(); }
     });
   }
 
@@ -563,14 +779,14 @@
     FORMATS.forEach((f) => { if (KSV.canEncode(f)) encodable.add(f); });
     restore(); // load saved UI options; the key selection stays at its default
     if (!encodable.has(ui.ext)) ui.ext = 'png';
-    state.lr = ui.lr; state.combo = ui.combo;
+    state.lr = ui.lr; state.combo = ui.combo; state.kb = ui.kb; state.look = ui.look; state.superKey = ui.pcKey;
     setAccent(ui.accent); // sets root --accent/--onFg
 
     // mount the interactive keyboard; onChange fires on every click
-    kbMount.appendChild(KSV.buildKeyboard(state, refresh));
-    buildSpotLayer();
+    mountKeyboard();
 
-    renderHyper(); renderLr(); renderCombo(); renderLayout(); renderExt(); renderTheme(); renderBgSeg(); renderShow(); renderSurface(); renderCapsOpts(); renderSwatches();
+    renderHyper(); renderLr(); renderCombo(); renderPickers(); renderRail(true);
+    $('railBtn').onclick = toggleRail; renderLayout(); renderExt(); renderTheme(); renderBgSeg(); renderShow(); renderSurface(); renderCapsOpts(); renderSwatches();
     renderVersion();
     renderIcons();
     exportBtn.onclick = exportNow;

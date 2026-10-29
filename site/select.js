@@ -7,17 +7,18 @@
 
   // true modifier keys — they stack; everything else is a single "activation" key, or as
   // many as you like in combo mode (state.combo), kept in click order
-  const MODS = new Set(['caps', 'fn', 'ctrl', 'opt', 'cmd', 'rcmd', 'ropt', 'lshift', 'rshift']);
+  // (rctrl: the Windows layouts' right ctrl; a MacBook has none)
+  const MODS = new Set(['caps', 'fn', 'ctrl', 'rctrl', 'opt', 'cmd', 'rcmd', 'ropt', 'lshift', 'rshift']);
   // modifiers eligible for a double-tap shortcut (caps lock / hyper excluded)
-  const DBLABLE = new Set(['fn', 'ctrl', 'opt', 'cmd', 'rcmd', 'ropt', 'lshift', 'rshift']);
+  const DBLABLE = new Set(['fn', 'ctrl', 'rctrl', 'opt', 'cmd', 'rcmd', 'ropt', 'lshift', 'rshift']);
   // keys a double-click turns into a double-tap: those modifiers, and every trigger key
   const canDouble = (code) => DBLABLE.has(code) || !MODS.has(code);
   // a double-tapped modifier is a shortcut on its own (a double-tapped trigger key is not)
   const modDbl = (s) => [...s.dbl].some((c) => MODS.has(c));
   // left/right modifier pairs (for "distinguish L/R")
-  const PAIR = { cmd: 'rcmd', rcmd: 'cmd', opt: 'ropt', ropt: 'opt', lshift: 'rshift', rshift: 'lshift' };
-  const CANON = { rcmd: 'cmd', ropt: 'opt', rshift: 'lshift' };
-  const DIR = { cmd: 'left', rcmd: 'right', opt: 'left', ropt: 'right', lshift: 'left', rshift: 'right' };
+  const PAIR = { cmd: 'rcmd', rcmd: 'cmd', opt: 'ropt', ropt: 'opt', lshift: 'rshift', rshift: 'lshift', ctrl: 'rctrl', rctrl: 'ctrl' };
+  const CANON = { rcmd: 'cmd', ropt: 'opt', rshift: 'lshift', rctrl: 'ctrl' };
+  const DIR = { cmd: 'left', rcmd: 'right', opt: 'left', ropt: 'right', lshift: 'left', rshift: 'right', ctrl: 'left', rctrl: 'right' };
   const canon = (c) => CANON[c] || c;
   // logical modifiers held at once: ⌃⌥⇧⌘ + fn
   const MAX_MODS = 5;

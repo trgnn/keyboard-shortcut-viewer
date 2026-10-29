@@ -57,6 +57,7 @@ body { overflow: auto; }
 /* blank Touch ID placeholder at the end of the function row */
 .ksv-touchid { pointer-events: none; opacity: .4; }
 .ksv-touchid::after { content: ''; width: 38%; aspect-ratio: 1; border-radius: 50%; border: 1px solid var(--keyBorder); opacity: .55; }
+.ksv-touchid.no-sensor::after { display: none; }
 .ksv-key {
   position: relative; box-sizing: border-box;
   border: 1px solid var(--keyBorder); background: var(--keyBg); color: var(--keyFg);
@@ -64,7 +65,7 @@ body { overflow: auto; }
      fallbacks here mirror KEYSPEC so the stylesheet is still correct on its own */
   border-radius: calc(var(--keyH, 56px) * var(--r-radius, 0.125)); height: var(--keyH, 58px);
   display: flex; align-items: center; justify-content: center;
-  font: 400 max(var(--fmin-letter, 19px), calc(var(--keyH, 56px) * var(--r-letter, 0.340)))/1 var(--key); cursor: pointer; user-select: none; padding: 0;
+  font: 400 max(var(--fmin-letter, 19px), calc(var(--keyH, 56px) * var(--r-letter, 0.330)))/1 var(--key); cursor: pointer; user-select: none; padding: 0;
   transition: transform .05s ease;
 }
 .ksv-fn { font-size: max(var(--fmin-fn, 13px), calc(var(--keyH, 56px) * var(--r-fn, 0.232))); }
@@ -77,6 +78,22 @@ body { overflow: auto; }
 .ksv-key.sm.fnkey { flex-direction: column; justify-content: space-between; }
 .ksv-key.sm.fnkey .cap { order: 2; align-self: flex-start; }
 .ksv-key.sm.fnkey .sub { order: 1; align-self: flex-end; }
+/* a MacBook's modifiers as printed (ksv.js LOOKS): a lone glyph in the bottom corner (low),
+   the globe and "fn" at either end of the bottom line (spread), larger words and a narrower
+   margin (phys: KEYSPEC.phys) */
+.ksv-key.sm .sub:empty { display: none; }
+/* a logo alone on its key, large and centred (a PC's super key: KEYSPEC.big) */
+.ksv-key.sm.big { justify-content: center; align-items: center; }
+.ksv-key.sm.big .cap { font-size: calc(var(--keyH, 56px) * var(--r-big, 0.42)); }
+.ksv-key.sm.low { justify-content: flex-end; }
+.ksv-key.sm.low:has(> .sub:not(:empty)) { justify-content: space-between; }
+.ksv-key.sm.phys { padding-left: calc(var(--keyH, 56px) * var(--r-phys-padx, 0.14)); padding-right: calc(var(--keyH, 56px) * var(--r-phys-padx, 0.14)); }
+.ksv-key.sm.phys .sub { font-size: max(var(--fmin-sub, 11px), calc(var(--keyH, 56px) * var(--r-phys-sub, 0.215))); }
+.ksv-key.sm.fnkey.spread { flex-direction: row; align-items: flex-end; justify-content: space-between; }
+.ksv-key.sm.fnkey.spread .cap, .ksv-key.sm.fnkey.spread .sub { order: 0; align-self: auto; }
+/* a lone small character in the top-left corner (², on a French PC) */
+.ksv-key.corner { align-items: flex-start; justify-content: flex-start; padding: calc(var(--keyH, 56px) * var(--r-pady, 0.143)) calc(var(--keyH, 56px) * var(--r-padx, 0.161));
+  font-size: max(var(--fmin-fn, 13px), calc(var(--keyH, 56px) * var(--r-dual, 0.3))); }
 .ic { display: block; }
 /* a run of glyphs inline in text (segmented control labels) */
 .ic-row { display: inline-flex; align-items: center; gap: 1px; font-size: 13px; vertical-align: middle; }
@@ -129,6 +146,40 @@ body { overflow: auto; }
     0 0 calc(var(--keyH) * var(--on-glow-size, 0.1)) 0 color-mix(in oklab, var(--accent) calc(var(--on-glow, 0.55) * 100%), transparent),
     inset 0 0 calc(var(--keyH) * var(--on-inner-size, 0.16)) color-mix(in oklab, var(--accent) calc(var(--on-inner, 0.55) * 100%), transparent);
 }
+/* two legends, stacked as printed (KEYSPEC.dual*; the export: drawKeyFace): each centred on its
+   KEYSPEC.dualY line. Under a symbol, a digit reads as large as a letter */
+.ksv-key .dual { position: absolute; inset: 0; }
+.ksv-key .dual > span { position: absolute; left: 0; right: 0; text-align: center; line-height: 1; transform: translateY(-50%);
+  top: calc(var(--keyH, 56px) * var(--r-dual-y0, 0.28)); font-size: max(var(--fmin-fn, 13px), calc(var(--keyH, 56px) * var(--r-dual, 0.3))); }
+.ksv-key .dual > span + span { top: calc(var(--keyH, 56px) * var(--r-dual-y1, 0.7)); }
+.ksv-key .dual > span.short { transform: translateY(-50%) scale(.85); } /* ksv.js SHORT */
+.ksv-key .dual.num > span:first-child { font-size: max(var(--fmin-sub, 11px), calc(var(--keyH, 56px) * var(--r-dual-sm, 0.23))); }
+.ksv-key .dual.num > span + span { font-size: max(var(--fmin-letter, 19px), calc(var(--keyH, 56px) * var(--r-letter, 0.33))); }
+/* ISO return (AZERTY): an L over two rows. The button spans its row and hangs over the next
+   one (the negative margin keeps its row one key high); its surface is the SVG path from
+   isoShape() (ksv.js), painted here like any key, idle or selected. Only the path takes
+   clicks, so the corner it leaves free stays the neighbour's. */
+.ksv-key.iso-ret {
+  height: calc(2 * var(--keyH, 56px) + var(--g, 6px)); margin-bottom: calc(-1 * (var(--keyH, 56px) + var(--g, 6px)));
+  padding-bottom: calc(var(--keyH, 56px) * (1 + var(--r-pady, 0.143)) + var(--g, 6px));
+  z-index: 1; pointer-events: none;
+}
+.ksv-key.iso-ret, .ksv-key.iso-ret:hover, .opt-d .stage .ksv-key.iso-ret.on, .opt-d .is-board .ksv-key.iso-ret.on { background: none; border-color: transparent; box-shadow: none; }
+.iso-shape { position: absolute; inset: -1px; width: calc(100% + 2px); height: calc(100% + 2px); overflow: visible; z-index: -1; pointer-events: none; }
+.iso-shape path { pointer-events: none; }
+.iso-shape .iso-face { fill: var(--keyBg); pointer-events: auto; }
+.ksv-static .iso-shape .iso-face { pointer-events: none; }
+.iso-edge { fill: none; stroke: var(--keyBorder); stroke-width: 1; }
+.ksv-key.iso-ret:hover .iso-edge { stroke: var(--accent); }
+.iso-tint, .iso-wash, .iso-inner, .iso-ring { display: none; }
+.iso-s0 { stop-color: var(--accent); stop-opacity: var(--on-ring-from, 1); }
+.iso-s1 { stop-color: var(--accent); stop-opacity: var(--on-ring-to, .1); }
+.ksv-key.iso-ret.on .iso-edge { display: none; }
+.ksv-key.iso-ret.on .iso-tint, .ksv-key.iso-ret.on .iso-wash, .ksv-key.iso-ret.on .iso-inner, .ksv-key.iso-ret.on .iso-ring { display: inline; }
+.iso-wash { fill: var(--accent); fill-opacity: var(--on-fill, .14); }
+.iso-inner { fill: none; stroke: var(--accent); stroke-opacity: var(--on-inner, .55); stroke-width: 2; }
+.iso-ring { fill: none; stroke-width: 1.5; }
+.ksv-key.iso-ret.on .iso-shape { filter: drop-shadow(0 0 calc(var(--keyH, 56px) * var(--on-glow-size, 0.1) / 2) color-mix(in oklab, var(--accent) calc(var(--on-glow, 0.55) * 100%), transparent)); }
 /* the arrow cluster's gap is half the key gap — the export draws the same (drawBoard) */
 .ksv-arrows { display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: 1fr 1fr; gap: calc(var(--g, 6px) / 2); }
 .ksv-arrows .ar { height: calc((var(--keyH, 58px) - var(--g, 6px) / 2) / 2); font-size: max(var(--fmin-sub, 11px), calc(var(--keyH, 56px) * var(--r-sub, 0.196))); border-radius: calc(var(--keyH, 56px) * var(--r-radius, 0.125) * 0.6); }
@@ -173,6 +224,8 @@ body { overflow: auto; }
   min-width: 1120px;
   /* rail grows gently on large screens, the stage (1fr) takes the rest */
   display: grid; grid-template-columns: 1fr 300px;
+  /* the rail folds away (⇧S: app.js toggleRail), the stage takes its room */
+  transition: grid-template-columns .3s ease;
   /* content max-width that the stage column centers around (see .head / .kb-wrap / .d-footer) */
   --content-max: 1180px;
 }
@@ -212,21 +265,74 @@ body { overflow: auto; }
 .opt-d .kb-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 14px 26px; margin: 0 0 16px; }
 .opt-d .kbc { display: flex; align-items: center; gap: 10px; }
 .opt-d .kbc.accent-kbc { margin-left: auto; }
+.opt-d .kbc[hidden] { display: none; }
+.opt-d .kb-controls.kb-below { margin: 16px 0 0; }
+/* while the pointer is on the keyboard, the controls above and below it step back: they
+   fade, shrink a little toward the keyboard and soften, as if further away */
+.opt-d .kb-controls { transition: opacity .25s ease, transform .35s ease, filter .35s ease; transform-origin: 50% 100%; }
+.opt-d .kb-controls.kb-below { transform-origin: 50% 0; }
+.opt-d .kb-wrap:has(> .panel:hover) .kb-controls { opacity: .35; transform: scale(.985); filter: blur(.6px); }
+/* keyboard layout: a native select, dressed like the segmented controls */
+/* the three dropdowns read as one group: closer than the other controls */
+.opt-d .kb-picks { display: flex; flex-wrap: wrap; gap: 8px; }
+.opt-d .kb-pick { position: relative; }
+.opt-d .pick-btn {
+  display: inline-flex; align-items: center; gap: 10px; height: 35px; padding: 0 11px 0 13px;
+  background: var(--field); border: 1px solid var(--line); border-radius: 8px;
+  font: 600 11.5px/1 var(--mono); color: var(--field-text); cursor: pointer;
+}
+.opt-d .pick-btn:hover, .opt-d .pick-btn[aria-expanded="true"] { background: var(--field-hover); color: var(--field-hover-text); }
+.opt-d .pick-btn > .ic:last-child { width: 14px; height: 14px; transform: rotate(180deg); transition: transform .15s ease; }
+.opt-d .pick-btn[aria-expanded="true"] > .ic:last-child { transform: none; }
+/* an option's icon (the super key's look), before its label */
+.opt-d .pick-btn > .ic:not(:last-child), .opt-d .pick-opt .ic { width: 14px; height: 14px; flex: none; }
+.opt-d .pick-btn > .ic:not(:last-child) { margin-right: -2px; }
+/* the options: the segmented control's look, stacked (.seg) */
+.opt-d .pick-list {
+  position: absolute; left: 0; top: calc(100% + 6px); z-index: 6; min-width: 100%; box-sizing: border-box;
+  display: flex; flex-direction: column; gap: 3px; padding: 3px; border: 1px solid var(--line); border-radius: 8px;
+  background: var(--field); box-shadow: 0 8px 24px rgba(0,0,0,.25);
+}
+.opt-d .pick-list[hidden] { display: none; }
+.opt-d .pick-opt {
+  display: flex; align-items: center; gap: 8px; height: 29px; padding: 0 10px; border: none; background: none; border-radius: 5px; text-align: left; white-space: nowrap;
+  font: 600 11.5px/1 var(--mono); color: var(--field-text); cursor: pointer;
+}
+.opt-d .pick-opt:hover, .opt-d .pick-opt:focus-visible { background: var(--field-hover); color: var(--field-hover-text); outline: none; }
+.opt-d .pick-opt.on { background: var(--accent); color: var(--onFg, #0a0b0d); }
 .opt-d .kbc.accent-kbc .swatches { gap: 6px; }
 .opt-d .kbc.accent-kbc .sw-chip { width: 22px; height: 22px; border-radius: 6px; }
 .opt-d .kbc-l { font: 500 12.5px/1 var(--mono); color: var(--label); }
 
-/* right rail — floats over the grid like the keyboard case */
+/* right rail — docked to the window's right edge, over the grid: the keyboard case's fill
+   and blur, one border on the stage side */
 .opt-d .rail {
   position: relative; z-index: 1;
-  margin: 16px 16px 16px 0;
-  /* match the keyboard case (.panel) so both floating surfaces read the same:
-     same border, radius, fill, blur, and no shadow */
-  border: 1px solid var(--line); border-radius: 12px;
+  border-left: 1px solid var(--line);
   background: var(--rail-bg);
   -webkit-backdrop-filter: blur(3px); backdrop-filter: blur(3px);
-  display: flex; flex-direction: column; min-height: 0; overflow: hidden;
+  display: flex; flex-direction: column; min-height: 0; min-width: 0; overflow: hidden;
+  /* hidden once folded (its controls leave the tab order: app.js), shown as it starts to open */
+  transition: visibility 0s .3s;
 }
+/* the content keeps its width while the column narrows: it slides out of view */
+.opt-d .rail > * { min-width: 299px; }
+.opt-d.rail-off { grid-template-columns: 1fr 0px; }
+/* the rail's toggle: tucked into the stage's top-right corner, against the rail (or the
+   window's edge once it's folded) and riding along with it; filled like the keyboard case,
+   rounded only on the corner that faces the page */
+.opt-d .rail-btn {
+  position: absolute; top: 0; right: 300px; z-index: 3;
+  display: grid; place-items: center; width: 40px; height: 40px; padding: 0;
+  background: var(--case-bg); -webkit-backdrop-filter: blur(3px); backdrop-filter: blur(3px);
+  border: none; border-radius: 0 0 0 10px;
+  color: var(--field-text); cursor: pointer; transition: right .3s ease;
+}
+.opt-d .rail-btn .ic { width: 16px; height: 16px; }
+.opt-d .rail-btn:hover { background: var(--field-hover); color: var(--field-hover-text); }
+.opt-d.rail-off .rail-btn { right: 0; }
+.opt-d.rail-off .rail { visibility: hidden; border-left-color: transparent; }
+.opt-d:not(.rail-off) .rail { transition: none; }
 .opt-d .rlbl { font: 500 11px/1 var(--mono); letter-spacing: .04em; color: var(--muted-text); }
 .opt-d .prev-card {
   margin-top: 12px; min-height: 80px; border: 1px solid var(--line); background: var(--canvas-bg);
@@ -308,7 +414,7 @@ body { overflow: auto; }
 .sw-chip.on { border-color: var(--sw-on, #f4f6f4); box-shadow: inset 0 0 0 1px rgba(0,0,0,.35); }
 
 /* ===== transparent background: a checkerboard in the theme's tones ===== */
-.ksv-app .prev-card.is-trans, .opt-d.cv-trans {
+.ksv-app .prev-card.is-trans, .opt-d.cv-trans, .opt-d .shot.is-trans, .opt-d .shot-fig.is-trans {
   background-color: var(--check-base);
   background-image: conic-gradient(var(--check) 90deg, transparent 90deg 180deg, var(--check) 180deg 270deg, transparent 270deg);
   background-size: 18px 18px;
@@ -370,7 +476,9 @@ body { overflow: auto; }
 /* ===== cursor light on the hairlines: near the cursor, the case's and the keys' borders
    light up, with a soft glow around the lit part. The rings live in .spot-layer, an empty
    copy of the keyboard laid over it inside the case (app.js buildSpotLayer): each ring is
-   one radial gradient fixed to the viewport (at the cursor glow's position, set on .panel)
+   one radial gradient in the case's coordinates (the cursor glow's position, set on .panel;
+   each copy key's --kx / --ky, its place in the case: app.js syncSpotLayer), so it holds as
+   the case leans,
    masked to a 1 px border, so every border samples the same light; the layer's
    drop-shadow then glows only what's lit, fading with it. Page only: no cursor in exports. */
 .opt-d .spot-layer {
@@ -385,13 +493,15 @@ body { overflow: auto; }
 .opt-d .spot-layer .ksv-key > *, .opt-d .spot-layer .ksv-key::after { visibility: hidden; }
 .opt-d .spot-ring, .opt-d .spot-layer .ksv-key::before {
   content: ''; position: absolute; inset: -1px; border-radius: inherit; padding: 1px;
-  background: radial-gradient(var(--spot-r, 110px) circle at var(--spot-x, -999px) var(--spot-y, -999px),
-    var(--accent), color-mix(in oklab, var(--accent) 45%, transparent) 40%, transparent 75%) fixed;
+  background: radial-gradient(var(--spot-r, 110px) circle at calc(var(--spot-x, -999px) - var(--kx, 0px)) calc(var(--spot-y, -999px) - var(--ky, 0px)),
+    var(--accent), color-mix(in oklab, var(--accent) 45%, transparent) 40%, transparent 75%);
   -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
   -webkit-mask-composite: xor; mask-composite: exclude;
 }
 .opt-d .spot-ring { inset: 0; }
 .opt-d .spot-layer .ksv-key.locked::before, .opt-d .spot-layer .ksv-key.maxed::before, .opt-d .spot-layer .ksv-touchid::before { display: none; }
+/* the ISO return's ring would be its box, not its L: no border light on it */
+.opt-d .spot-layer .ksv-key.iso-ret::before { display: none; }
 
 /* export / copy with nothing to export (keycaps, no key selected) */
 .opt-d .rail-foot .go:disabled { opacity: .42; cursor: not-allowed; filter: none; }
@@ -400,10 +510,41 @@ body { overflow: auto; }
 .small-screen { display: none; }
 @media (max-width: 767px) {
   .small-screen {
-    display: flex; align-items: center; gap: 12px; position: fixed; top: 0; left: 0; right: 0; z-index: 10;
-    padding: 12px 16px; background: #14161a; color: #e6eaef; border-bottom: 1px solid #23262d;
+    display: flex; align-items: center; gap: 12px; position: fixed; bottom: 0; left: 0; right: 0; z-index: 10;
+    padding: 12px 16px; background: #14161a; color: #e6eaef; border-top: 1px solid #23262d;
     font: 500 13px/1.4 'JetBrains Mono', ui-monospace, monospace;
   }
   .small-screen span { flex: 1; }
   .small-screen button { flex: none; display: grid; place-items: center; width: 32px; height: 32px; border: 0; border-radius: 8px; background: #23262d; color: inherit; font-size: 16px; cursor: pointer; }
 }
+/* narrower than the app (.opt-d min-width), the page scrolls sideways: the rail's toggle stays
+   in the screen's top-right corner, where it can always be reached */
+@media (max-width: 1119px) {
+  .opt-d .rail-btn, .opt-d.rail-off .rail-btn { position: fixed; right: 0; z-index: 11; transition: none; }
+}
+
+/* ===== what went out, with the rail folded (app.js showShot): a thumbnail bottom right,
+   then the image large on a click ===== */
+.opt-d .shot {
+  position: fixed; right: 32px; bottom: 30px; z-index: 20; padding: 0; cursor: zoom-in;
+  display: block; border: 1px solid var(--line); border-radius: 10px; overflow: hidden;
+  background: var(--canvas-bg); box-shadow: 0 10px 30px rgba(0,0,0,.35);
+  /* slides in from the right edge, and back out past it when it goes */
+  opacity: 0; transform: translateX(calc(100% + 40px)); transition: opacity .3s ease, transform .35s cubic-bezier(.2, .8, .2, 1);
+}
+.opt-d .shot.in { opacity: 1; transform: none; }
+.opt-d .shot:hover { border-color: var(--accent); }
+.opt-d .shot img { display: block; max-width: 220px; max-height: 120px; }
+.opt-d .shot-cap {
+  position: absolute; left: 6px; bottom: 6px; padding: 3px 6px; border-radius: 5px;
+  font: 600 10.5px/1 var(--mono); color: var(--onFg, #0a0b0d); background: var(--accent);
+}
+.opt-d .shot-view {
+  position: fixed; inset: 0; z-index: 30; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px;
+  padding: 40px; background: rgba(0,0,0,.6); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
+  cursor: zoom-out; outline: none; opacity: 0; transition: opacity .2s ease;
+}
+.opt-d .shot-view.in { opacity: 1; }
+.opt-d .shot-fig { border: 1px solid var(--line); border-radius: 12px; overflow: hidden; background: var(--canvas-bg); max-width: 100%; }
+.opt-d .shot-fig img { display: block; max-width: min(90vw, 1400px); max-height: 78vh; }
+.opt-d .shot-name { font: 500 11.5px/1 var(--mono); color: #cfd4da; }

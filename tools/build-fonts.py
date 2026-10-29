@@ -30,10 +30,12 @@ INTER = ('https://github.com/rsms/inter/releases/download/v4.1/Inter-4.1.zip',
 MONO = ('https://github.com/JetBrains/JetBrainsMono/releases/download/v2.304/JetBrainsMono-2.304.zip',
         '6f6376c6ed2960ea8a963cd7387ec9d76e3f629125bc33d1fdcd7eb7012f7bbf')
 WEIGHTS = {400: 'Regular', 500: 'Medium', 600: 'SemiBold', 700: 'Bold'}
-CHARS = ''.join(chr(c) for c in range(0x20, 0x7F))  # printable ASCII: every key label
+ASCII = ''.join(chr(c) for c in range(0x20, 0x7F))
+# every key label: printable ASCII, and the French AZERTY legends
+CHARS = ASCII + 'éèçàù²§°£µ¨'
 # the mono UI text: ASCII, Latin-1 and the few typographic marks the page uses (· × — …)
 MONO_WEIGHTS = {500: 'Medium', 600: 'SemiBold'}
-MONO_CHARS = CHARS + ''.join(chr(c) for c in range(0xA0, 0x100)) + '–—‘’“”…•→↗'
+MONO_CHARS = ASCII + ''.join(chr(c) for c in range(0xA0, 0x100)) + '–—‘’“”…•→↗'
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 SITE = ROOT / 'site'

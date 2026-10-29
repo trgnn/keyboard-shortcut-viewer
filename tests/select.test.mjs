@@ -84,3 +84,10 @@ test('combo mode: trigger keys stack, in click order, and toggle off', () => {
   assert.deepEqual([...s.sel], ['cmd', 'k', 's', 'tab']);
   assert.deepEqual([...click({ ...s, combo: true }, 's').sel], ['cmd', 'k', 'tab']);
 });
+
+test('Windows right ctrl pairs with ctrl like the other L/R modifiers', () => {
+  const s = click(state(), 'rctrl');
+  assert.equal(S.isOn(s, 'ctrl'), true, 'linked when not distinguishing');
+  assert.equal(S.logicalModCount(click(s, 'ctrl')), 0, 'clicking the twin clears both');
+  assert.deepEqual(sorted(click(state([], { lr: true }), 'ctrl', 'rctrl').sel), ['rctrl'], 'one side at a time with L/R');
+});

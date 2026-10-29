@@ -17,6 +17,11 @@
     tab:   { d: 'M3.5 12h14M12.5 7l5 5-5 5M20.5 6v12' },
     ret:   { d: 'M19.5 5v6a3 3 0 0 1-3 3H5M9 10l-4 4 4 4' },
     del:   { d: 'M8.5 5h12v14h-12L2.5 12zM11.5 9l6 6M17.5 9l-6 6' },
+    win:   { d: 'M3.5 3.5h7.75v7.75H3.5zM12.75 3.5h7.75v7.75h-7.75zM3.5 12.75h7.75v7.75H3.5zM12.75 12.75h7.75v7.75h-7.75z', fill: true },
+    // a PC's super key, beside the Windows logo: Tux (Linux), Framework's gear. Both from
+    // Simple Icons (simpleicons.org, CC0 13.21.0); the logos stay their owners' marks
+    tux:   { d: 'M12.504 0c-.155 0-.315.008-.48.021-4.226.333-3.105 4.807-3.17 6.298-.076 1.092-.3 1.953-1.05 3.02-.885 1.051-2.127 2.75-2.716 4.521-.278.832-.41 1.684-.287 2.489a.424.424 0 00-.11.135c-.26.268-.45.6-.663.839-.199.199-.485.267-.797.4-.313.136-.658.269-.864.68-.09.189-.136.394-.132.602 0 .199.027.4.055.536.058.399.116.728.04.97-.249.68-.28 1.145-.106 1.484.174.334.535.47.94.601.81.2 1.91.135 2.774.6.926.466 1.866.67 2.616.47.526-.116.97-.464 1.208-.946.587-.003 1.23-.269 2.26-.334.699-.058 1.574.267 2.577.2.025.134.063.198.114.333l.003.003c.391.778 1.113 1.132 1.884 1.071.771-.06 1.592-.536 2.257-1.306.631-.765 1.683-1.084 2.378-1.503.348-.199.629-.469.649-.853.023-.4-.2-.811-.714-1.376v-.097l-.003-.003c-.17-.2-.25-.535-.338-.926-.085-.401-.182-.786-.492-1.046h-.003c-.059-.054-.123-.067-.188-.135a.357.357 0 00-.19-.064c.431-1.278.264-2.55-.173-3.694-.533-1.41-1.465-2.638-2.175-3.483-.796-1.005-1.576-1.957-1.56-3.368.026-2.152.236-6.133-3.544-6.139zm.529 3.405h.013c.213 0 .396.062.584.198.19.135.33.332.438.533.105.259.158.459.166.724 0-.02.006-.04.006-.06v.105a.086.086 0 01-.004-.021l-.004-.024a1.807 1.807 0 01-.15.706.953.953 0 01-.213.335.71.71 0 00-.088-.042c-.104-.045-.198-.064-.284-.133a1.312 1.312 0 00-.22-.066c.05-.06.146-.133.183-.198.053-.128.082-.264.088-.402v-.02a1.21 1.21 0 00-.061-.4c-.045-.134-.101-.2-.183-.333-.084-.066-.167-.132-.267-.132h-.016c-.093 0-.176.03-.262.132a.8.8 0 00-.205.334 1.18 1.18 0 00-.09.4v.019c.002.089.008.179.02.267-.193-.067-.438-.135-.607-.202a1.635 1.635 0 01-.018-.2v-.02a1.772 1.772 0 01.15-.768c.082-.22.232-.406.43-.533a.985.985 0 01.594-.2zm-2.962.059h.036c.142 0 .27.048.399.135.146.129.264.288.344.465.09.199.14.4.153.667v.004c.007.134.006.2-.002.266v.08c-.03.007-.056.018-.083.024-.152.055-.274.135-.393.2.012-.09.013-.18.003-.267v-.015c-.012-.133-.04-.2-.082-.333a.613.613 0 00-.166-.267.248.248 0 00-.183-.064h-.021c-.071.006-.13.04-.186.132a.552.552 0 00-.12.27.944.944 0 00-.023.33v.015c.012.135.037.2.08.334.046.134.098.2.166.268.01.009.02.018.034.024-.07.057-.117.07-.176.136a.304.304 0 01-.131.068 2.62 2.62 0 01-.275-.402 1.772 1.772 0 01-.155-.667 1.759 1.759 0 01.08-.668 1.43 1.43 0 01.283-.535c.128-.133.26-.2.418-.2zm1.37 1.706c.332 0 .733.065 1.216.399.293.2.523.269 1.052.468h.003c.255.136.405.266.478.399v-.131a.571.571 0 01.016.47c-.123.31-.516.643-1.063.842v.002c-.268.135-.501.333-.775.465-.276.135-.588.292-1.012.267a1.139 1.139 0 01-.448-.067 3.566 3.566 0 01-.322-.198c-.195-.135-.363-.332-.612-.465v-.005h-.005c-.4-.246-.616-.512-.686-.71-.07-.268-.005-.47.193-.6.224-.135.38-.271.483-.336.104-.074.143-.102.176-.131h.002v-.003c.169-.202.436-.47.839-.601.139-.036.294-.065.466-.065zm2.8 2.142c.358 1.417 1.196 3.475 1.735 4.473.286.534.855 1.659 1.102 3.024.156-.005.33.018.513.064.646-1.671-.546-3.467-1.089-3.966-.22-.2-.232-.335-.123-.335.59.534 1.365 1.572 1.646 2.757.13.535.16 1.104.021 1.67.067.028.135.06.205.067 1.032.534 1.413.938 1.23 1.537v-.043c-.06-.003-.12 0-.18 0h-.016c.151-.467-.182-.825-1.065-1.224-.915-.4-1.646-.336-1.77.465-.008.043-.013.066-.018.135-.068.023-.139.053-.209.064-.43.268-.662.669-.793 1.187-.13.533-.17 1.156-.205 1.869v.003c-.02.334-.17.838-.319 1.35-1.5 1.072-3.58 1.538-5.348.334a2.645 2.645 0 00-.402-.533 1.45 1.45 0 00-.275-.333c.182 0 .338-.03.465-.067a.615.615 0 00.314-.334c.108-.267 0-.697-.345-1.163-.345-.467-.931-.995-1.788-1.521-.63-.4-.986-.87-1.15-1.396-.165-.534-.143-1.085-.015-1.645.245-1.07.873-2.11 1.274-2.763.107-.065.037.135-.408.974-.396.751-1.14 2.497-.122 3.854a8.123 8.123 0 01.647-2.876c.564-1.278 1.743-3.504 1.836-5.268.048.036.217.135.289.202.218.133.38.333.59.465.21.201.477.335.876.335.039.003.075.006.11.006.412 0 .73-.134.997-.268.29-.134.52-.334.74-.4h.005c.467-.135.835-.402 1.044-.7zm2.185 8.958c.037.6.343 1.245.882 1.377.588.134 1.434-.333 1.791-.765l.211-.01c.315-.007.577.01.847.268l.003.003c.208.199.305.53.391.876.085.4.154.78.409 1.066.486.527.645.906.636 1.14l.003-.007v.018l-.003-.012c-.015.262-.185.396-.498.595-.63.401-1.746.712-2.457 1.57-.618.737-1.37 1.14-2.036 1.191-.664.053-1.237-.2-1.574-.898l-.005-.003c-.21-.4-.12-1.025.056-1.69.176-.668.428-1.344.463-1.897.037-.714.076-1.335.195-1.814.12-.465.308-.797.641-.984l.045-.022zm-10.814.049h.01c.053 0 .105.005.157.014.376.055.706.333 1.023.752l.91 1.664.003.003c.243.533.754 1.064 1.189 1.637.434.598.77 1.131.729 1.57v.006c-.057.744-.48 1.148-1.125 1.294-.645.135-1.52.002-2.395-.464-.968-.536-2.118-.469-2.857-.602-.369-.066-.61-.2-.723-.4-.11-.2-.113-.602.123-1.23v-.004l.002-.003c.117-.334.03-.752-.027-1.118-.055-.401-.083-.71.043-.94.16-.334.396-.4.69-.533.294-.135.64-.202.915-.47h.002v-.002c.256-.268.445-.601.668-.838.19-.201.38-.336.663-.336zm7.159-9.074c-.435.201-.945.535-1.488.535-.542 0-.97-.267-1.28-.466-.154-.134-.28-.268-.373-.335-.164-.134-.144-.333-.074-.333.109.016.129.134.199.2.096.066.215.2.36.333.292.2.68.467 1.167.467.485 0 1.053-.267 1.398-.466.195-.135.445-.334.648-.467.156-.136.149-.267.279-.267.128.016.034.134-.147.332a8.097 8.097 0 01-.69.468zm-1.082-1.583V5.64c-.006-.02.013-.042.029-.05.074-.043.18-.027.26.004.063 0 .16.067.15.135-.006.049-.085.066-.135.066-.055 0-.092-.043-.141-.068-.052-.018-.146-.008-.163-.065zm-.551 0c-.02.058-.113.049-.166.066-.047.025-.086.068-.14.068-.05 0-.13-.02-.136-.068-.01-.066.088-.133.15-.133.08-.031.184-.047.259-.005.019.009.036.03.03.05v.02h.003z', fill: true },
+    framework: { d: 'M23.186 9.07 21.41 8.019a2.78 2.78 0 0 1-1.344-2.391V3.523c0-.431-.19-.837-.516-1.108A11.965 11.965 0 0 0 16.317.493a1.356 1.356 0 0 0-1.193.091L13.347 1.64a2.622 2.622 0 0 1-2.688 0L8.882.584a1.348 1.348 0 0 0-1.194-.09 11.93 11.93 0 0 0-3.231 1.918 1.44 1.44 0 0 0-.516 1.108v2.104c0 .986-.51 1.897-1.344 2.392L.823 9.068c-.363.215-.61.588-.675 1.013A12.24 12.24 0 0 0 0 12.001c0 .651.048 1.292.145 1.916.065.425.312.801.675 1.016l1.774 1.052a2.78 2.78 0 0 1 1.344 2.392v2.104c0 .431.191.837.516 1.108.965.8 2.054 1.452 3.231 1.919.393.155.831.124 1.194-.091l1.777-1.055a2.622 2.622 0 0 1 2.688 0l1.777 1.055c.363.215.804.246 1.193.091a11.973 11.973 0 0 0 3.232-1.92 1.44 1.44 0 0 0 .516-1.107v-2.104a2.78 2.78 0 0 1 1.344-2.392l1.774-1.052c.363-.215.61-.588.675-1.016.094-.624.145-1.265.145-1.916 0-.652-.048-1.293-.145-1.917a1.41 1.41 0 0 0-.67-1.013zM12.003 19.41c-3.981 0-7.21-3.317-7.21-7.407s3.229-7.406 7.21-7.406c3.98 0 7.21 3.316 7.21 7.406s-3.23 7.407-7.21 7.407z', fill: true },
     globe: { d: 'M2.55 12a9.45 9.45 0 1 0 18.9 0a9.45 9.45 0 1 0-18.9 0M7.95 12a4.05 9.45 0 1 0 8.1 0a4.05 9.45 0 1 0-8.1 0M2.55 12h18.9' },
     hyper: { d: 'M12 2.5l4 4-4 4-4-4zM17.5 8l4 4-4 4-4-4zM12 13.5l4 4-4 4-4-4zM6.5 8l4 4-4 4-4-4z', fill: true },
     up:    { d: 'M12 5.5l7.5 12.5h-15z', fill: true },
@@ -30,6 +35,7 @@
     copy:     { d: 'M9 9h10.5v10.5H9zM15 9V4.5H4.5V15H9' },
     check:    { d: 'M5 12.5l4.5 4.5L19 7.5' },
     chevron:  { d: 'M7 14l5-5 5 5' },
+    sidebar:  { d: 'M5.5 4.5h13a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2h-13a2 2 0 0 1-2-2v-11a2 2 0 0 1 2-2zM14.5 4.5v15' },
     cross:    { d: 'M6.5 6.5l11 11M17.5 6.5l-11 11' }
   };
   const iconPaint = (I) => I.fill
@@ -113,37 +119,125 @@
   const DOUBLE_MS = 220;
   // spoken names for keys whose face is a glyph or an abbreviation (letters read as is)
   const KEYNAME = {
-    esc: 'escape', del: 'delete', caps: 'caps lock', ret: 'return', lshift: 'left shift', rshift: 'right shift',
+    esc: 'escape', tab: 'tab', del: 'delete', caps: 'caps lock', ret: 'return', lshift: 'left shift', rshift: 'right shift',
     ctrl: 'control', opt: 'left option', cmd: 'left command', rcmd: 'right command', ropt: 'right option',
-    space: 'space', up: 'up arrow', down: 'down arrow', left: 'left arrow', right: 'right arrow'
+    space: 'space', up: 'up arrow', down: 'down arrow', left: 'left arrow', right: 'right arrow', iso: 'less than'
   };
+  const KEYNAME_PC = { del: 'backspace', ret: 'enter', ctrl: 'left control', rctrl: 'right control', cmd: 'windows', opt: 'alt', ropt: 'right alt' };
+  const KEYNAME_LINUX = { cmd: 'super' };
 
+  /* ---- keyboard layouts: a MacBook or a PC laptop (Windows or Linux), QWERTY (US) or AZERTY (French) ----
+     The same 64% block everywhere, on the same COLS grid. A key's code names its position,
+     as on the US MacBook (the key at `q` reads A in AZERTY, `cmd` is the PC's Windows / super
+     key), so a selection carries over from one layout to the next. French is ISO, like the
+     real keyboards: an L-shaped return over two rows (`iso-ret`), a short left shift and an
+     extra `iso` key next to it; the US `\` moves down beside the return. The PC is a plain
+     laptop (a Framework's): a wider left ctrl, then fn, the Windows (super on Linux) key, alt.
+     A layout id is `<os>-<lang>`, plus `:phys` for a MacBook's modifiers as printed (LOOKS). */
+  const OSES = ['mac', 'win', 'linux'], LANGS = ['us', 'fr'];
+  const KBS = OSES.flatMap((o) => LANGS.map((l) => o + '-' + l));
+  const KB_DEFAULT = 'mac-us';
+  // how a MacBook's modifiers read: as printed on the keys (`printed`, the default: full words,
+  // each side's keys aligned to its edge, shift, tab, caps lock, return and delete a glyph
+  // alone in the bottom corner), or KSV's own labels (`custom`)
+  const LOOKS = ['printed', 'custom'];
+  // a PC's super key: the Windows logo (the `win-*` layouts), or super (`linux-*`) with Tux,
+  // Framework's gear or nothing; `-logo`: the logo alone, large, without its word
+  const SUPERS = ['win', 'win-logo', 'tux', 'tux-logo', 'framework', 'framework-logo', 'super'];
+  const superOs = (superKey) => (/^win/.test(superKey) ? 'win' : 'linux');
+  const layoutId = (state) => {
+    const kb = state.kb || KB_DEFAULT;
+    if (kb.startsWith('mac')) return kb + (state.look === 'custom' ? '' : ':phys');
+    return kb + (SUPERS.includes(state.superKey) && superOs(state.superKey) === kb.split('-')[0] ? ':' + state.superKey : '');
+  };
+  // legends by code: a character, or [top, bottom] for a key printed with two, as on the
+  // real keyboards (the top one is shifted). Letters read as their code
+  const US = {
+    '`': ['~', '`'], 1: ['!', '1'], 2: ['@', '2'], 3: ['#', '3'], 4: ['$', '4'], 5: ['%', '5'], 6: ['^', '6'],
+    7: ['&', '7'], 8: ['*', '8'], 9: ['(', '9'], 0: [')', '0'], '-': ['_', '-'], '=': ['+', '='],
+    '[': ['{', '['], ']': ['}', ']'], '\\': ['|', '\\'], ';': [':', ';'], "'": ['"', "'"],
+    ',': ['<', ','], '.': ['>', '.'], '/': ['?', '/']
+  };
+  const FR = {
+    q: 'A', w: 'Z', a: 'Q', ';': 'M', z: 'W', 1: ['1', '&'], 2: ['2', 'é'], 3: ['3', '"'], 4: ['4', "'"],
+    5: ['5', '('], 7: ['7', 'è'], 9: ['9', 'ç'], 0: ['0', 'à'], '-': ['°', ')'], '[': ['¨', '^'],
+    "'": ['%', 'ù'], iso: ['>', '<'], m: ['?', ','], ',': ['.', ';'], '.': ['/', ':']
+  };
+  const LEGEND = {
+    'mac-us': US, 'win-us': US,
+    'mac-fr': Object.assign({}, FR, { '`': ['#', '@'], 6: ['6', '§'], 8: ['8', '!'], '=': ['_', '-'],
+      ']': ['*', '$'], '\\': ['£', '`'], '/': ['+', '='] }),
+    'win-fr': Object.assign({}, FR, { '`': '²', 6: ['6', '-'], 8: ['8', '_'], '=': ['+', '='],
+      ']': ['£', '$'], '\\': ['µ', '*'], '/': ['§', '!'] })
+  };
+  // the one character that names a two-legend key (keycaps, filenames): its digit, or the
+  // unshifted (bottom) one
+  // a digit under its symbol, as on a US keyboard: the digit reads as large as a letter
+  // Inter's | runs from descender to ascender, longer than printed legends: drawn smaller,
+  // about its centre (the page: .dual .short)
+  const SHORT = { '|': 0.85 };
+  const isDigitKey = (lb) => Array.isArray(lb) && /^[0-9]$/.test(lb[1]);
+  const baseLegend = (lb) => (Array.isArray(lb) ? lb.find((c) => /[0-9]/.test(c)) || lb[1] : lb);
   // main 58-col block. each key: code, label, sub(optional small line), span, cls.
-  // keys with a sub-label (the .sm modifiers) take an ICONS name as their label.
+  // keys with a sub-label (the .sm modifiers) take an ICONS name (or null) as their label.
   // letters/numbers span 4 (square); modifiers are trimmed so every row totals 58 cols
-  const ROWS = [
-    // number row
-    [['`','`',null,4],['1','1',null,4],['2','2',null,4],['3','3',null,4],['4','4',null,4],
-     ['5','5',null,4],['6','6',null,4],['7','7',null,4],['8','8',null,4],['9','9',null,4],
-     ['0','0',null,4],['-','-',null,4],['=','=',null,4],['del','del','del',6,'mod sm ralign']],
-    // qwerty
-    [['tab','tab','tab',5,'mod sm'],['q','Q',null,4],['w','W',null,4],['e','E',null,4],['r','R',null,4],
-     ['t','T',null,4],['y','Y',null,4],['u','U',null,4],['i','I',null,4],['o','O',null,4],
-     ['p','P',null,4],['[','[',null,4],[']',']',null,4],['\\','\\',null,5]],
-    // home — caps lock = hyperkey
-    [['caps','caps','caps',6,'mod sm hyper'],['a','A',null,4],['s','S',null,4],['d','D',null,4],
-     ['f','F',null,4],['g','G',null,4],['h','H',null,4],['j','J',null,4],['k','K',null,4],
-     ['l','L',null,4],[';',';',null,4],["'","'",null,4],['ret','ret','return',8,'mod sm ralign']],
-    // bottom
-    [['lshift','shift','shift',8,'mod sm modkey'],['z','Z',null,4],['x','X',null,4],['c','C',null,4],
-     ['v','V',null,4],['b','B',null,4],['n','N',null,4],['m','M',null,4],[',',',',null,4],
-     ['.','.',null,4],['/','/',null,4],['rshift','shift','shift',10,'mod sm modkey ralign']],
-    // modifiers + arrows
-    [['fn','globe','fn',4,'mod sm modkey fnkey'],['ctrl','ctrl','ctrl',4,'mod sm modkey ralign'],
-     ['opt','opt','opt',4,'mod sm modkey ralign'],['cmd','cmd','cmd',6,'mod sm modkey ralign'],
-     ['space','',null,20,'mod'],['rcmd','cmd','cmd',6,'mod sm modkey'],
-     ['ropt','opt','opt',4,'mod sm modkey'],['arrows','',null,10,'arrows']]
-  ];
+  // a PC's super key (SUPERS): a logo and its word, the logo alone (large, `big`), or the word
+  function superCell(os, superKey) {
+    // (the default: the Windows logo alone; super on Linux)
+    const k = superKey && superOs(superKey) === os ? superKey : os === 'win' ? 'win-logo' : 'super';
+    const [name, logo] = k.split('-'), icon = name === 'super' ? null : name;
+    return logo ? ['cmd', icon, '', 4, 'mod sm modkey big'] : ['cmd', icon, os === 'win' ? 'win' : 'super', 4, 'mod sm modkey'];
+  }
+  // a PC's legends are a Windows keyboard's, whatever the OS
+  // ² sits alone in the top-left corner, small, as printed (`corner`)
+  const CORNER = new Set(['²']);
+  function buildRows(kb, phys, superKey) {
+    const os = kb.split('-')[0], pc = os !== 'mac', iso = kb.endsWith('-fr');
+    const L = LEGEND[(pc ? 'win' : 'mac') + (iso ? '-fr' : '-us')];
+    const key = (code, span = 4) => [code, L[code] || code.toUpperCase(), null, span,
+      Array.isArray(L[code]) ? 'dual' : CORNER.has(L[code]) ? 'corner' : undefined];
+    const keys = (codes) => codes.split(' ').map((c) => key(c));
+    // a MacBook's modifiers as printed (phys): `low` puts a lone glyph in the bottom corner
+    const low = phys ? ' low' : '';
+    const ret = (span, cls) => ['ret', 'ret', phys ? '' : pc ? 'enter' : 'return', span, 'mod sm ralign' + low + (cls || '')];
+    const shift = (code, span, cls) => [code, 'shift', phys ? '' : 'shift', span, 'mod sm modkey' + cls];
+    // a MacBook's bottom row: KSV's glyph + short name, right-aligned on the left-hand keys
+    // (default), or the printed one
+    const macMods = phys
+      ? [['fn', 'globe', 'fn', 4, 'mod sm modkey fnkey spread'], ['ctrl', 'ctrl', 'control', 4, 'mod sm modkey'],
+        ['opt', 'opt', 'option', 4, 'mod sm modkey'], ['cmd', 'cmd', 'command', 6, 'mod sm modkey'],
+        ['space', '', null, 20, 'mod'], ['rcmd', 'cmd', 'command', 6, 'mod sm modkey ralign'],
+        ['ropt', 'opt', 'option', 4, 'mod sm modkey ralign']]
+      : [['fn', 'globe', 'fn', 4, 'mod sm modkey fnkey'], ['ctrl', 'ctrl', 'ctrl', 4, 'mod sm modkey ralign'],
+        ['opt', 'opt', 'opt', 4, 'mod sm modkey ralign'], ['cmd', 'cmd', 'cmd', 6, 'mod sm modkey ralign'],
+        ['space', '', null, 20, 'mod'], ['rcmd', 'cmd', 'cmd', 6, 'mod sm modkey'],
+        ['ropt', 'opt', 'opt', 4, 'mod sm modkey']];
+    // a PC laptop's: ctrl (wider) fn win alt · alt / alt gr ctrl; Linux calls the Windows key super
+    const pcMods = [['ctrl', null, 'ctrl', 6, 'mod sm modkey'], ['fn', null, 'fn', 4, 'mod sm modkey'],
+      superCell(os, superKey),
+      ['opt', null, 'alt', 4, 'mod sm modkey'], ['space', '', null, 22, 'mod'],
+      ['ropt', null, iso ? 'alt gr' : 'alt', 4, 'mod sm modkey'], ['rctrl', null, 'ctrl', 4, 'mod sm modkey']];
+    // a US MacBook's tab is wide and its `\` square; a PC's (ANSI) share the room
+    const macUS = !pc && !iso;
+    const rows = [
+      // number row
+      [...keys('` 1 2 3 4 5 6 7 8 9 0 - ='), ['del', 'del', phys ? '' : pc ? 'backspace' : 'del', 6, 'mod sm ralign' + low]],
+      // top letter row; ISO: the return's top
+      [['tab', 'tab', phys ? '' : 'tab', macUS ? 6 : 5, 'mod sm' + low], ...keys('q w e r t y u i o p [ ]'),
+        iso ? ret(5, ' iso-ret') : key('\\', macUS ? 4 : 5)],
+      // home — caps lock = hyperkey; ISO: `\` here, then the return's foot (drawn with its top)
+      [['caps', 'caps', phys ? '' : 'caps', 6, 'mod sm hyper' + low], ...keys("a s d f g h j k l ; '"),
+        ...(iso ? [key('\\'), ['retfoot', null, null, 4, 'foot']] : [ret(8)])],
+      // bottom; ISO: a short left shift and the extra key
+      [shift('lshift', iso ? 4 : 8, low), ...(iso ? [key('iso')] : []), ...keys('z x c v b n m , . /'),
+        shift('rshift', 10, ' ralign' + low)],
+      // modifiers + arrows
+      [...(pc ? pcMods : macMods), ['arrows', '', null, 10, 'arrows']]
+    ];
+    // printed modifiers: larger words, a narrower margin (KEYSPEC.phys)
+    if (phys) rows.forEach((row) => row.forEach((k) => { if (/\bsm\b/.test(k[4] || '')) k[4] += ' phys'; }));
+    return rows;
+  }
   const FN = ['esc','F1','F2','F3','F4','F5','F6','F7','F8','F9','F10','F11','F12'];
 
   /* ---- key proportions: the single source of truth for how a key looks ----
@@ -157,10 +251,15 @@
     radius: 0.125,   // corner radius
     padX: 0.161,     // .sm key horizontal padding
     padY: 0.143,     // .sm key vertical padding
-    letter: 0.340,   // letter / number / symbol key font
+    letter: 0.330,   // letter key font (and single-legend symbols, and a digit under its symbol)
     fnKey: 0.232,    // F-row keys + .sm modifier base font
     glyph: 0.268,    // .sm modifier corner glyph (⌘ ⌥ ⇧ …, globe)
     sub: 0.196,      // .sm modifier sub-label, esc label, arrow glyph
+    dual: 0.300,     // both characters of a two-legend key (shifted above, unshifted below)…
+    dualSm: 0.230,   // …except the symbol over a digit (US), smaller, the digit at `letter`
+    dualY: [0.28, 0.70], // the two characters' centres
+    phys: { sub: 0.215, padX: 0.14 }, // a MacBook's modifiers as printed: the word, the side margin
+    big: 0.42,       // a logo alone on its key, centred (a PC's super key: SUPERS `-logo`)
     floor: { letter: 19, fnKey: 13, glyph: 15, sub: 11 }
   };
 
@@ -232,6 +331,13 @@
     elm.style.setProperty('--r-fn', S.fnKey);
     elm.style.setProperty('--r-glyph', S.glyph);
     elm.style.setProperty('--r-sub', S.sub);
+    elm.style.setProperty('--r-dual', S.dual);
+    elm.style.setProperty('--r-dual-sm', S.dualSm);
+    elm.style.setProperty('--r-phys-sub', S.phys.sub);
+    elm.style.setProperty('--r-phys-padx', S.phys.padX);
+    elm.style.setProperty('--r-big', S.big);
+    elm.style.setProperty('--r-dual-y0', S.dualY[0]);
+    elm.style.setProperty('--r-dual-y1', S.dualY[1]);
     elm.style.setProperty('--r-padx', S.padX);
     elm.style.setProperty('--r-pady', S.padY);
     elm.style.setProperty('--fmin-letter', f.letter + 'px');
@@ -253,28 +359,68 @@
 
   const el = (tag, cls, html) => { const n = document.createElement(tag); if (cls) n.className = cls; if (html != null) n.innerHTML = html; return n; };
 
+  /* The ISO return in the page: an L over two rows, which a box can't be. The key spans its
+     row and reaches down over the next one; its surface is an SVG path (the same outline as
+     the export's, isoD) redrawn whenever it resizes, styled like a key in styles.css (.iso-*).
+     Only the path takes clicks, so the corner it leaves free belongs to the key beside it. */
+  let isoN = 0;
+  const isoRO = typeof ResizeObserver === 'function' && new ResizeObserver((entries) => entries.forEach((e) => drawIso(e.target)));
+  const isoWatched = new Set();
+  function isoShape(k) {
+    const id = 'iso' + (isoN++), NS = 'http://www.w3.org/2000/svg';
+    const svg = document.createElementNS(NS, 'svg');
+    svg.setAttribute('class', 'iso-shape');
+    svg.setAttribute('aria-hidden', 'true');
+    svg.innerHTML = '<defs><linearGradient id="' + id + 'g" x1="0" y1="0" x2="1" y2="1">' +
+      '<stop offset="0" class="iso-s0"/><stop offset="' + ONSTATE.ringStop + '" class="iso-s1"/></linearGradient>' +
+      '<clipPath id="' + id + 'c"><path/></clipPath>' +
+      '<filter id="' + id + 'f" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur/></filter></defs>' +
+      '<path class="iso-face"/><path class="iso-tint" fill="url(#' + id + 'g)"/><path class="iso-wash"/>' +
+      '<path class="iso-inner" clip-path="url(#' + id + 'c)" filter="url(#' + id + 'f)"/>' +
+      '<path class="iso-edge"/><path class="iso-ring" stroke="url(#' + id + 'g)"/>';
+    k.prepend(svg);
+    if (isoRO) {
+      // a rebuilt keyboard leaves the old return behind: stop watching it
+      isoWatched.forEach((n) => { if (!n.isConnected) { isoRO.unobserve(n); isoWatched.delete(n); } });
+      isoRO.observe(k); isoWatched.add(k);
+    }
+  }
+  function drawIso(k) {
+    const w = k.offsetWidth, h = k.offsetHeight, kb = k.closest('.ksv-kb');
+    if (!w || !h || !kb) return;
+    const g = parseFloat(getComputedStyle(kb).rowGap) || 0, keyH = (h - g) / 2;
+    // the foot is one column narrower: a column and a gap, (w + g) / 5 for a 5-column top
+    const d = isoD(0.5, 0.5, w - 1, h - 1, keyH * KEYSPEC.radius, (w + g) / 5, keyH + g);
+    const svg = k.querySelector('.iso-shape');
+    svg.setAttribute('viewBox', '0 0 ' + w + ' ' + h);
+    svg.querySelectorAll('path').forEach((p) => p.setAttribute('d', d));
+    svg.querySelector('feGaussianBlur').setAttribute('stdDeviation', keyH * ONSTATE.innerSize / 2);
+  }
+
   function buildKeyboard(state, onChange, kopts) {
     kopts = kopts || {};
     const kb = el('div', 'ksv-kb' + (kopts.static ? ' ksv-static' : ''));
     applySpec(kb, !!kopts.static, kopts.keyBg);
 
+    const L = layout(layoutId(state));
+    kb.dataset.kb = L.kb;
     // function row — esc (wide) + F1..F12 (square, like the letter keys) on the COLS grid,
-    // with a blank Touch ID cell at the far right
+    // with a blank cell at the far right (the MacBook's Touch ID)
     const fnRow = el('div', 'ksv-fnrow');
     FN.forEach((c, i) => {
       const k = el('button', 'ksv-key ksv-fn' + (i === 0 ? ' esc' : ''), i === 0 ? '<span class="sub">esc</span>' : c);
       k.style.gridColumn = 'span ' + (c === 'esc' ? 6 : 4);
       k.dataset.code = c;
-      if (KEYNAME[c]) k.setAttribute('aria-label', KEYNAME[c]);
+      if (L.name(c)) k.setAttribute('aria-label', L.name(c));
       fnRow.appendChild(k);
     });
-    const touchid = el('div', 'ksv-key ksv-fn ksv-touchid');
+    const touchid = el('div', 'ksv-key ksv-fn ksv-touchid' + (L.pc ? ' no-sensor' : ''));
     touchid.style.gridColumn = 'span 4';
     fnRow.appendChild(touchid);
     kb.appendChild(fnRow);
 
     // main rows
-    ROWS.forEach(row => {
+    L.rows.forEach(row => {
       const r = el('div', 'ksv-row');
       row.forEach(([code, label, sub, span, cls]) => {
         if (code === 'arrows') {
@@ -282,18 +428,29 @@
           wrap.style.gridColumn = 'span ' + span;
           [['up', 'up'], ['left', 'lf'], ['down', 'dn'], ['right', 'rt']].forEach(([c, pos]) => {
             const a = el('button', 'ksv-key ar ' + pos, icon(c));
-            a.dataset.code = c; a.setAttribute('aria-label', KEYNAME[c]);
+            a.dataset.code = c; a.setAttribute('aria-label', L.name(c));
             wrap.appendChild(a);
           });
           r.appendChild(wrap);
           return;
         }
+        if (cls === 'foot') {
+          // the ISO return's foot: room the return (one row up) reaches down into
+          const f = el('div', 'ksv-foot');
+          f.style.gridColumn = 'span ' + span;
+          r.appendChild(f);
+          return;
+        }
         const k = el('button', 'ksv-key ' + (cls || ''));
         k.style.gridColumn = 'span ' + span;
         k.dataset.code = code;
-        if (sub) k.innerHTML = '<span class="cap">' + icon(label) + '</span><span class="sub">' + sub + '</span>';
+        if (sub != null) k.innerHTML = '<span class="cap">' + (label ? icon(label) : '') + '</span><span class="sub">' + sub + '</span>';
+        else if (Array.isArray(label)) k.innerHTML = '<span class="dual' + (isDigitKey(label) ? ' num' : '') + '"><span></span><span></span></span>';
         else k.textContent = label;
-        if (KEYNAME[code]) k.setAttribute('aria-label', KEYNAME[code]);
+        if (Array.isArray(label)) k.querySelectorAll(':scope > .dual > span').forEach((n, i) => { n.textContent = label[i]; n.classList.toggle('short', label[i] in SHORT); });
+        if (/\biso-ret\b/.test(cls)) isoShape(k);
+        if (code === 'caps') k.dataset.sub = sub; // the label app.js puts back when the hyperkey is off
+        if (L.name(code)) k.setAttribute('aria-label', L.name(code));
         r.appendChild(k);
       });
       kb.appendChild(r);
@@ -352,14 +509,14 @@
 
   // produce ordered list of {label, sub} keycaps for the current selection. ORDER puts the
   // modifiers first, then tab / esc / del / return (activation keys, so `mod` stays false)
-  const ORDER = ['caps','fn','ctrl','opt','cmd','rcmd','ropt','lshift','rshift','tab','esc','del','ret'];
+  const ORDER = ['caps','fn','ctrl','rctrl','opt','cmd','rcmd','ropt','lshift','rshift','tab','esc','del','ret'];
   // keys drawn as an ICONS glyph in the keycap list; everything else is a text label
   const CAPICON = {
-    fn: 'globe', ctrl: 'ctrl', opt: 'opt', cmd: 'cmd', rcmd: 'cmd', ropt: 'opt', lshift: 'shift', rshift: 'shift',
+    fn: 'globe', ctrl: 'ctrl', rctrl: 'ctrl', opt: 'opt', cmd: 'cmd', rcmd: 'cmd', ropt: 'opt', lshift: 'shift', rshift: 'shift',
     tab: 'tab', del: 'del', ret: 'ret', up: 'up', down: 'down', left: 'left', right: 'right'
   };
   function caps(state) {
-    const lr = !!state.lr;
+    const lr = !!state.lr, L = layout(layoutId(state)), span = (c) => (L.cell[c] && L.cell[c].span) || 4;
     let selArr = [...state.sel];
     if (!lr) {
       // collapse linked L/R pairs to one canonical chip
@@ -378,12 +535,12 @@
       const isHyper = c === 'caps' && !!state.hyper;
       const ic = c === 'caps' ? (isHyper ? 'hyper' : 'caps') : CAPICON[c];
       let sub = c === 'caps' ? (isHyper ? 'hyper' : 'caps') : null;
-      if (lr && DIR[c]) sub = DIR[c];
-      out.push({ code: c, icon: ic || null, label: ic ? null : c, sub, mod: S.MODS.has(c), hyper: isHyper, dbl: isDbl(state, c) });
+      if (lr && DIR[c] && L.has(PAIR[c])) sub = DIR[c]; // a MacBook's lone ctrl has no side
+      out.push({ code: c, icon: ic || null, label: ic ? null : c, sub, mod: S.MODS.has(c), hyper: isHyper, dbl: isDbl(state, c), kb: L.id, span: span(c) });
     });
     keys.forEach(c => {
-      const ic = CAPICON[c] || null;
-      out.push({ code: c, icon: ic, label: ic ? null : c.toUpperCase(), sub: null, mod: false, dbl: isDbl(state, c) });
+      const ic = CAPICON[c] || null, lb = L.cell[c] ? L.cell[c].label : c.toUpperCase();
+      out.push({ code: c, icon: ic, label: ic ? null : baseLegend(lb), sub: null, mod: false, dbl: isDbl(state, c), kb: L.id, span: span(c) });
     });
     return out;
   }
@@ -409,8 +566,7 @@
   function capsDims(list, opts, scale) {
     const C = capsSpec(opts), mode = plusMode(opts);
     const h = C.keyH, bd = boardDims(1), k = h / bd.keyH, colW = bd.colW * k, g = BOARD.g * k;
-    const span = (code) => (CELL[code] && CELL[code].span) || 4;
-    const widths = list.map((c) => span(c.code) * colW + (span(c.code) - 1) * g);
+    const widths = list.map((c) => c.span * colW + (c.span - 1) * g);
     // the space before each key: none for the first, a "+" box or a plain gap for the others
     const seps = list.map((c, i) => !i ? 0 : plusBefore(list, i, mode) ? 2 * C.gap + C.plus : C.gap);
     const cw = widths.reduce((a, b) => a + b, 0) + seps.reduce((a, b) => a + b, 0);
@@ -437,7 +593,7 @@
       }
       const w = d.widths[i];
       const lit = d.glow === 'all' || (d.glow === 'mods' && c.mod) || (d.glow === 'key' && !c.mod);
-      drawKeyFace(p, c.code, x, y, w, d.keyH, d.r, lit, opts, accent, { hyper: c.hyper, dbl: c.dbl, bg });
+      drawKeyFace(p, c.code, x, y, w, d.keyH, d.r, lit, opts, accent, { hyper: c.hyper, dbl: c.dbl, bg, kb: c.kb });
       x += w;
     });
   }
@@ -478,7 +634,8 @@
     opts = opts || {};
     return opts.layout === 'board' ? boardImage(state, opts) : capsImage(state, opts);
   }
-  // downloads go through a Blob and an object URL: no multi-MB base64 string at 4×
+  // downloads go through a Blob and an object URL: no multi-MB base64 string at 4×.
+  // Both resolve with what went out, { blob, name } (the page shows it: app.js showShot)
   function exportImage(state, opts) {
     return ready(opts.format).then(() => {
       const out = image(state, opts);
@@ -490,6 +647,7 @@
         const a = document.createElement('a'), url = URL.createObjectURL(b);
         a.download = out.name; a.href = url; a.click();
         setTimeout(() => URL.revokeObjectURL(url), 30000); // once the download has surely started
+        return { blob: b, name: out.name };
       });
     });
   }
@@ -504,14 +662,18 @@
       return o;
     });
     const item = {};
+    let shown; // the image as it looks, for the page
     if (opts.format === 'svg') {
       const blob = (type) => out.then((o) => new Blob([o.svg], { type }));
       if (ClipboardItem.supports && ClipboardItem.supports('image/svg+xml')) item['image/svg+xml'] = blob('image/svg+xml');
       item['text/plain'] = blob('text/plain');
+      shown = blob('image/svg+xml');
     } else {
-      item['image/png'] = out.then((o) => new Promise((res) => o.canvas.toBlob(res, 'image/png')));
+      shown = item['image/png'] = out.then((o) => new Promise((res) => o.canvas.toBlob(res, 'image/png')));
     }
-    return navigator.clipboard.write([new ClipboardItem(item)]);
+    return navigator.clipboard.write([new ClipboardItem(item)])
+      .then(() => Promise.all([shown, out]))
+      .then(([blob, o]) => ({ blob, name: o.name }));
   }
 
   // symbol keys spelled out: their codes hold characters filesystems reject (/ \) or
@@ -525,7 +687,9 @@
   function exportName(layout, list, bgName) {
     const head = ['KSV', layout === 'board' ? 'keyboard' : 'keycaps'];
     if (bgName) head.push(bgName);
-    const shortcut = (list && list.length) ? list.map(c => SLUG[c.code] || c.code).join('-') : '';
+    // a key by what it reads in its layout (AZERTY's `q` is "a"), by its code otherwise
+    const slug = (c) => c.label && /^[a-z0-9]$/i.test(c.label) ? c.label.toLowerCase() : SLUG[c.label] || SLUG[c.code] || c.code;
+    const shortcut = (list && list.length) ? list.map(slug).join('-') : '';
     return head.join('-') + (shortcut ? '_' + shortcut : '');
   }
 
@@ -589,30 +753,38 @@
     const font = (t) => (t.weight || 400) + ' ' + t.size + 'px ' + UIFONT;
     return {
       rect(x, y, w, h, fill) { ctx.fillStyle = fill; ctx.fillRect(x, y, w, h); },
-      // rounded rect: `fills` painted in order, then an optional stroke with an optional glow
+      // rounded rect (or, with s.notch {w, h}, the ISO return's L: isoD): `fills` painted in
+      // order, then an optional stroke with an optional glow
       rrect(x, y, w, h, r, s) {
+        const shape = (dx) => {
+          const p = new Path2D();
+          if (s.notch) p.addPath(new Path2D(isoD(x + dx, y, w, h, r, s.notch.w, s.notch.h)));
+          else rrPath(p, x + dx, y, w, h, r);
+          return p;
+        };
+        const P = shape(0);
         if (s.glow) {
           // outer glow = the shape's own shadow, painted outside it only (like a CSS
           // box-shadow): the shape is drawn far off-canvas and only its shadow is offset back,
           // under an even-odd clip that excludes the shape. Shadows ignore the transform,
           // hence the scale.
           const off = 1e4, clip = new Path2D();
-          clip.rect(-off, -off, 3 * off, 3 * off); rrPath(clip, x, y, w, h, r);
+          clip.rect(-off, -off, 3 * off, 3 * off); clip.addPath(P);
           ctx.save(); ctx.clip(clip, 'evenodd');
           ctx.shadowColor = s.glow.color; ctx.shadowBlur = s.glow.blur * scale; ctx.shadowOffsetX = off * scale;
-          roundRect(ctx, x - off, y, w, h, r); ctx.fillStyle = '#000'; ctx.fill();
+          ctx.fillStyle = '#000'; ctx.fill(shape(-off));
           ctx.restore();
         }
-        (s.fills || []).forEach((f) => { roundRect(ctx, x, y, w, h, r); ctx.fillStyle = paint(f); ctx.fill(); });
+        (s.fills || []).forEach((f) => { ctx.fillStyle = paint(f); ctx.fill(P); });
         if (s.inner) {
           // inner glow: a stroke's shadow, clipped to the shape so only the inside shows
-          ctx.save(); roundRect(ctx, x, y, w, h, r); ctx.clip();
+          ctx.save(); ctx.clip(P);
           ctx.shadowColor = s.inner.color; ctx.shadowBlur = s.inner.blur * scale;
-          roundRect(ctx, x, y, w, h, r); ctx.lineWidth = 2; ctx.strokeStyle = s.inner.color; ctx.stroke();
+          ctx.lineWidth = 2; ctx.strokeStyle = s.inner.color; ctx.stroke(P);
           ctx.restore();
         }
         if (!s.stroke) return;
-        roundRect(ctx, x, y, w, h, r); ctx.lineWidth = s.lw; ctx.strokeStyle = paint(s.stroke); ctx.stroke();
+        ctx.lineWidth = s.lw; ctx.strokeStyle = paint(s.stroke); ctx.stroke(P);
       },
       circle(cx, cy, r, s) {
         ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2);
@@ -695,21 +867,24 @@
     return {
       rect(x, y, w, h, fill) { out.push('<rect x="' + x + '" y="' + y + '" width="' + w + '" height="' + h + '"' + attr('fill', fill) + '/>'); },
       rrect(x, y, w, h, r, s) {
-        const box = 'x="' + x + '" y="' + y + '" width="' + w + '" height="' + h + '" rx="' + r + '"';
+        // a <rect>, or for the ISO return's L (s.notch) a <path>
+        const d = s.notch ? isoD(x, y, w, h, r, s.notch.w, s.notch.h) : rrD(x, y, w, h, r);
+        const shape = (a) => s.notch ? '<path d="' + d + '"' + a + '/>'
+          : '<rect x="' + x + '" y="' + y + '" width="' + w + '" height="' + h + '" rx="' + r + '"' + a + '/>';
         if (s.glow) {
           // outer glow: the shape's shadow, clipped to everything but the shape (even-odd)
           const id = 'c' + (n++), big = 1e5;
-          defs.push('<clipPath id="' + id + '"><path clip-rule="evenodd" d="M' + -big + ' ' + -big + 'H' + big + 'V' + big + 'H' + -big + 'Z' + rrD(x, y, w, h, r) + '"/></clipPath>');
-          out.push('<g clip-path="url(#' + id + ')"><rect ' + box + ' fill="#000"' + shadowOnly(s.glow) + '/></g>');
+          defs.push('<clipPath id="' + id + '"><path clip-rule="evenodd" d="M' + -big + ' ' + -big + 'H' + big + 'V' + big + 'H' + -big + 'Z' + d + '"/></clipPath>');
+          out.push('<g clip-path="url(#' + id + ')">' + shape(' fill="#000"' + shadowOnly(s.glow)) + '</g>');
         }
-        (s.fills || []).forEach((f) => out.push('<rect ' + box + attr('fill', f) + '/>'));
+        (s.fills || []).forEach((f) => out.push(shape(attr('fill', f))));
         if (s.inner) {
           // inner glow: a glowing stroke clipped to the shape (SVG 1.1 clipPath)
           const id = 'c' + (n++);
-          defs.push('<clipPath id="' + id + '"><rect ' + box + '/></clipPath>');
-          out.push('<rect ' + box + ' fill="none"' + attr('stroke', s.inner.color) + ' stroke-width="2" clip-path="url(#' + id + ')"' + glow(s.inner) + '/>');
+          defs.push('<clipPath id="' + id + '">' + shape('') + '</clipPath>');
+          out.push(shape(' fill="none"' + attr('stroke', s.inner.color) + ' stroke-width="2" clip-path="url(#' + id + ')"' + glow(s.inner)));
         }
-        if (s.stroke) out.push('<rect ' + box + ' fill="none"' + attr('stroke', s.stroke) + ' stroke-width="' + s.lw + '"/>');
+        if (s.stroke) out.push(shape(' fill="none"' + attr('stroke', s.stroke) + ' stroke-width="' + s.lw + '"'));
       },
       circle(cx, cy, r, s) {
         out.push('<circle cx="' + cx + '" cy="' + cy + '" r="' + r + '"' + (s.fill ? attr('fill', s.fill) : ' fill="none"') +
@@ -731,20 +906,23 @@
   // ONSTATE paint — the solid key base, an accent gradient (ringFrom→ringTo) and a
   // flat accent wash on top, plus a gradient ring and soft glow — matching the
   // selector / preview .on state.
-  function boardSurface(p, x, y, w, h, r, on, opts, accent) {
+  // iso (the ISO return): { h: its full height over two rows, nw / nh: the corner it leaves
+  // free }; h stays one key's height, which sizes the glows
+  function boardSurface(p, x, y, w, h, r, on, opts, accent, iso) {
+    const H = iso ? iso.h : h, notch = iso ? { w: iso.nw, h: iso.nh } : null;
     const base = opts.keyBg || '#131519';
     if (on) {
       const O = ONSTATE;
       // 135°-equivalent accent gradient; used for both the fill and the ring,
       // mirroring the DOM border-box layer
-      const grad = { x1: x, y1: y, x2: x + w, y2: y + h, stops: [[0, hexA(accent, O.ringFrom)], [O.ringStop, hexA(accent, O.ringTo)]] };
-      p.rrect(x, y, w, h, r, {
-        fills: [base, grad, hexA(accent, O.fill)],
+      const grad = { x1: x, y1: y, x2: x + w, y2: y + H, stops: [[0, hexA(accent, O.ringFrom)], [O.ringStop, hexA(accent, O.ringTo)]] };
+      p.rrect(x, y, w, H, r, {
+        notch, fills: [base, grad, hexA(accent, O.fill)],
         stroke: grad, lw: 1.5, glow: { color: hexA(accent, O.glow), blur: h * O.glowSize },
         inner: { color: hexA(accent, O.inner), blur: h * O.innerSize }
       });
     } else {
-      p.rrect(x, y, w, h, r, { fills: [base], stroke: opts.keyBorder || 'rgba(255,255,255,.08)', lw: 1 });
+      p.rrect(x, y, w, H, r, { notch, fills: [base], stroke: opts.keyBorder || 'rgba(255,255,255,.08)', lw: 1 });
     }
   }
   // centered (or left-aligned) single-label key: letters, numbers, fn row.
@@ -764,13 +942,20 @@
   }
   // modifier key: corner glyph (an ICONS name) + sub-label, accent glyph when idle — mirrors
   // the selector's .sm keys. sub weight 500 (.sm .sub); all sizes from KEYSPEC.
-  function bmod(p, x, y, w, h, r, on, opts, accent, glyph, sub, ralign, accentGlyph) {
-    boardSurface(p, x, y, w, h, r, on, opts, accent);
-    const padX = h * KEYSPEC.padX, padY = h * KEYSPEC.padY, gSize = h * KEYSPEC.glyph, sSize = h * KEYSPEC.sub;
-    const keyFg = opts.fg || '#d7dbe0';
+  // look: { low (a lone glyph in the bottom corner), phys (a MacBook's printed modifier: KEYSPEC.phys),
+  // big (a lone glyph, large and centred: KEYSPEC.big) }
+  function bmod(p, x, y, w, h, r, on, opts, accent, glyph, sub, ralign, accentGlyph, iso, look) {
+    boardSurface(p, x, y, w, h, r, on, opts, accent, iso);
+    look = look || {};
+    const S = KEYSPEC, padX = h * (look.phys ? S.phys.padX : S.padX), padY = h * S.padY;
+    const gSize = h * S.glyph, sSize = h * (look.phys ? S.phys.sub : S.sub), keyFg = opts.fg || '#d7dbe0';
     const gx = ralign ? x + w - padX : x + padX;
-    p.icon(glyph, ralign ? gx - gSize : gx, y + padY, gSize, (!on && accentGlyph) ? (opts.accentInk || accent) : keyFg);
-    p.text(sub, gx, y + h - padY - sSize / 2, { size: sSize, weight: 500, color: keyFg, align: ralign ? 'right' : 'left' });
+    // a label (the hyperkey's, on a printed caps lock) keeps the glyph in its top corner
+    const gTop = look.low && !sub ? y + h - padY - gSize : y + padY;
+    const gColor = (!on && accentGlyph) ? (opts.accentInk || accent) : keyFg;
+    if (look.big && glyph) { const b = h * S.big; return p.icon(glyph, x + (w - b) / 2, y + (h - b) / 2, b, gColor); }
+    if (glyph) p.icon(glyph, ralign ? gx - gSize : gx, gTop, gSize, gColor);
+    if (sub) p.text(sub, gx, y + h - padY - sSize / 2, { size: sSize, weight: 500, color: keyFg, align: ralign ? 'right' : 'left' });
   }
   // arrow key: surface + a centered ICONS glyph
   function barrow(p, x, y, w, h, r, on, opts, accent, name, size) {
@@ -817,11 +1002,23 @@
     }
   }
 
-  // every key's place in the keyboard, by code: label, sub-label, span (in COLS) and class
-  const CELL = {};
-  ROWS.forEach((row) => row.forEach(([code, label, sub, span, cls]) => { CELL[code] = { label, sub, span, cls }; }));
-  FN.forEach((c) => { CELL[c] = c === 'esc' ? { span: 6, esc: true } : { span: 4, fnKey: true }; });
-  ['up', 'down', 'left', 'right'].forEach((c) => { CELL[c] = { span: 4, arrow: true }; });
+  // a layout's rows, and every key's place in it by code: label, sub-label, span (in COLS)
+  // and class (built once per layout)
+  const LAYOUTS = {};
+  function layout(id) {
+    let [kb, look] = String(id).split(':');
+    kb = KBS.includes(kb) ? kb : KB_DEFAULT;
+    const pc = !kb.startsWith('mac'), phys = look === 'phys' && !pc;
+    const superKey = pc && SUPERS.includes(look) && superOs(look) === kb.split('-')[0] ? look : null;
+    id = kb + (phys ? ':phys' : superKey ? ':' + superKey : '');
+    if (LAYOUTS[id]) return LAYOUTS[id];
+    const rows = buildRows(kb, phys, superKey), cell = {};
+    rows.forEach((row) => row.forEach(([code, label, sub, span, cls]) => { cell[code] = { label, sub, span, cls }; }));
+    FN.forEach((c) => { cell[c] = c === 'esc' ? { span: 6, esc: true } : { span: 4, fnKey: true }; });
+    ['up', 'down', 'left', 'right'].forEach((c) => { cell[c] = { span: 4, arrow: true }; });
+    const names = Object.assign({}, KEYNAME, pc ? KEYNAME_PC : {}, kb.startsWith('linux') ? KEYNAME_LINUX : {});
+    return (LAYOUTS[id] = { id, kb, pc, iso: kb.endsWith('-fr'), rows, cell, has: (c) => !!cell[c], name: (c) => names[c] });
+  }
 
   // the double-tap badge, on a key's top-right corner
   function drawBadge(p, right, top, keyH, accent, bg, opts) {
@@ -830,9 +1027,10 @@
     p.text('2', bx, by + 0.5, { size: br * 1.1, weight: 700, color: opts.hyperFg || '#0a0b0d' });
   }
   // one key as it looks in the keyboard, at any size: surface, labels and double-tap badge.
-  // f: { hyper (caps shows the hyperkey), dbl, bg (for the badge's ring) }
+  // f: { kb (the layout), hyper (caps shows the hyperkey), dbl, bg (for the badge's ring),
+  // iso (the ISO return's L, in the keyboard export: see boardSurface) }
   function drawKeyFace(p, code, x, y, w, keyH, r, isSel, opts, accent, f) {
-    const c = CELL[code] || { label: code.toUpperCase(), span: 4 }, keyFg = opts.fg || '#d7dbe0';
+    const c = layout(f.kb).cell[code] || { label: code.toUpperCase(), span: 4 }, keyFg = opts.fg || '#d7dbe0';
     if (c.esc) {
       // esc reads like the other special keys: a small bottom-left label
       boardSurface(p, x, y, w, keyH, r, isSel, opts, accent);
@@ -843,17 +1041,30 @@
       barrow(p, x, y, w, keyH, r, isSel, opts, accent, code, keyH * KEYSPEC.glyph);
     } else if (code === 'space') {
       bkey(p, x, y, w, keyH, r, isSel, opts, accent, '', 20);
-    } else if (code === 'fn') {
-      // like a real Mac: globe icon bottom-left, "fn" text top-right
+    } else if (Array.isArray(c.label)) {
+      // two legends, stacked as printed: the shifted character above the other
       boardSurface(p, x, y, w, keyH, r, isSel, opts, accent);
-      const padX = keyH * KEYSPEC.padX, padY = keyH * KEYSPEC.padY;
-      const gSize = keyH * KEYSPEC.glyph, sSize = keyH * KEYSPEC.sub;
+      const S = KEYSPEC, num = isDigitKey(c.label), t = (size) => ({ size: keyH * size, weight: 400, color: keyFg });
+      const sz = (ch, size) => size * (SHORT[ch] || 1);
+      p.text(c.label[0], x + w / 2, y + keyH * S.dualY[0], t(sz(c.label[0], num ? S.dualSm : S.dual)));
+      p.text(c.label[1], x + w / 2, y + keyH * S.dualY[1], t(sz(c.label[1], num ? S.letter : S.dual)));
+    } else if (c.cls && /\bcorner\b/.test(c.cls)) {
+      // a lone small character in the top-left corner (², on a French PC)
+      boardSurface(p, x, y, w, keyH, r, isSel, opts, accent);
+      const size = keyH * KEYSPEC.dual;
+      p.text(c.label, x + keyH * KEYSPEC.padX, y + keyH * KEYSPEC.padY + size / 2, { size, weight: 400, color: keyFg, align: 'left' });
+    } else if (c.cls && /\bfnkey\b/.test(c.cls)) {
+      // like a real Mac: globe icon bottom-left, "fn" text top-right (bottom-right, as printed)
+      boardSurface(p, x, y, w, keyH, r, isSel, opts, accent);
+      const phys = /\bphys\b/.test(c.cls), padX = keyH * (phys ? KEYSPEC.phys.padX : KEYSPEC.padX), padY = keyH * KEYSPEC.padY;
+      const gSize = keyH * KEYSPEC.glyph, sSize = keyH * (phys ? KEYSPEC.phys.sub : KEYSPEC.sub);
       p.icon('globe', x + padX, y + keyH - padY - gSize, gSize, isSel ? keyFg : (opts.accentInk || accent));
-      p.text('fn', x + w - padX, y + padY + sSize / 2, { size: sSize, weight: 500, color: keyFg, align: 'right' });
+      p.text('fn', x + w - padX, phys ? y + keyH - padY - sSize / 2 : y + padY + sSize / 2, { size: sSize, weight: 500, color: keyFg, align: 'right' });
     } else if (c.cls && /\bsm\b/.test(c.cls)) {
       const ralign = /\bralign\b/.test(c.cls), accentGlyph = /\b(modkey|hyper)\b/.test(c.cls);
       const hy = code === 'caps' && f.hyper;
-      bmod(p, x, y, w, keyH, r, isSel, opts, accent, hy ? 'hyper' : c.label, hy ? 'hyper' : c.sub, ralign, accentGlyph);
+      bmod(p, x, y, w, keyH, r, isSel, opts, accent, hy ? 'hyper' : c.label, hy ? 'hyper' : c.sub, ralign, accentGlyph, f.iso,
+        { low: /\blow\b/.test(c.cls), phys: /\bphys\b/.test(c.cls), big: /\bbig\b/.test(c.cls) });
     } else {
       bkey(p, x, y, w, keyH, r, isSel, opts, accent, c.label, keyH * KEYSPEC.letter);
     }
@@ -865,7 +1076,7 @@
     const b = BOARD;
     const sel = state.sel, on = (c) => isOn(state, c);
     const keyH = d.keyH, colW = d.colW, r = d.r;
-    const accent = opts.accent || opts.hyper || '#22d3ee';
+    const accent = opts.accent || opts.hyper || '#22d3ee', L = layout(layoutId(state));
     drawCanvas(p, opts, d, bg);
 
     // function row — esc (wide) + F1..F12 (square) + a blank Touch ID square at the far right
@@ -874,18 +1085,18 @@
     const sqW = 4 * colW + 3 * b.g; // square key width = keyH (one letter unit)
     FN.forEach((c) => {
       const w = c === 'esc' ? 6 * colW + 5 * b.g : sqW;
-      drawKeyFace(p, c, fx, y, w, keyH, r, sel.has(c), opts, accent, {});
+      drawKeyFace(p, c, fx, y, w, keyH, r, sel.has(c), opts, accent, { kb: L.id });
       fx += w + b.g;
     });
-    // Touch ID — blank, deactivated-looking key with a faint sensor ring
+    // Touch ID — blank, deactivated-looking key with a faint sensor ring (none on a PC)
     p.group(0.4, () => {
       boardSurface(p, fx, y, sqW, keyH, r, false, opts, accent);
-      p.circle(fx + sqW / 2, y + keyH / 2, keyH * 0.2, { stroke: opts.keyBorder || 'rgba(255,255,255,.18)', lw: Math.max(1, keyH * 0.022) });
+      if (!L.pc) p.circle(fx + sqW / 2, y + keyH / 2, keyH * 0.2, { stroke: opts.keyBorder || 'rgba(255,255,255,.18)', lw: Math.max(1, keyH * 0.022) });
     });
     y += keyH + b.rowGap;
 
     // main rows
-    ROWS.forEach(row => {
+    L.rows.forEach(row => {
       let x = b.pad;
       row.forEach(cell => {
         const [code, label, sub, span, cls] = cell;
@@ -900,17 +1111,20 @@
           barrow(p, x + 2 * (colw + ag), y + cellH + ag, colw, cellH, ar, on('right'), opts, accent, 'right', af);
           x += w + b.g; return;
         }
+        // the ISO return's foot: drawn with the return, a row up
+        if (cls === 'foot') { x += w + b.g; return; }
+        const iso = cls && /\biso-ret\b/.test(cls) ? { h: 2 * keyH + b.rowGap, nw: colW + b.g, nh: keyH + b.rowGap } : null;
         // greyed out as on screen: locked by the hyperkey or over the modifier limit
         const grey = (state.locked && state.locked.has(code)) || S.maxed(state, code);
         p.group(grey ? 0.28 : 1, () => drawKeyFace(p, code, x, y, w, keyH, r, on(code), opts, accent,
-          { hyper: state.hyper, dbl: isDbl(state, code), bg }));
+          { kb: L.id, hyper: state.hyper, dbl: isDbl(state, code), bg, iso }));
         x += w + b.g;
       });
       y += keyH + b.rowGap;
     });
   }
 
-  window.KSV = { buildKeyboard, buildBoardPreview, caps, render: image, exportImage, copyImage, exportSize, boardSize, boardDims, CAPS, frameRect, gridOrigin, BOARD, FRAME, GRID, THEMES, ink, canEncode, paint, icon, el, HYPER, KEYBG, COLS };
+  window.KSV = { KBS, LOOKS, SUPERS, hasKey: (kb, c) => layout(kb).has(c), buildKeyboard, buildBoardPreview, caps, render: image, exportImage, copyImage, exportSize, boardSize, boardDims, CAPS, frameRect, gridOrigin, BOARD, FRAME, GRID, THEMES, ink, canEncode, paint, icon, el, HYPER, KEYBG, COLS };
   // a rounded rect as a sub-path of a Path2D (for the even-odd glow clip)
   function rrPath(p, x, y, w, h, r) {
     p.moveTo(x + r, y); p.arcTo(x + w, y, x + w, y + h, r); p.arcTo(x + w, y + h, x, y + h, r);
@@ -922,6 +1136,21 @@
       'V' + (y + h - r) + 'A' + r + ' ' + r + ' 0 0 1 ' + (x + w - r) + ' ' + (y + h) +
       'H' + (x + r) + 'A' + r + ' ' + r + ' 0 0 1 ' + x + ' ' + (y + h - r) +
       'V' + (y + r) + 'A' + r + ' ' + r + ' 0 0 1 ' + (x + r) + ' ' + y + 'Z';
+  }
+  // a polygon with every corner rounded to r (outer corners convex, inner ones concave), as
+  // SVG path data — axis-aligned edges, clockwise
+  function roundPoly(pts, r) {
+    const n = pts.length;
+    return pts.map((p, i) => {
+      const a = pts[(i + n - 1) % n], b = pts[(i + 1) % n];
+      const ux = Math.sign(a[0] - p[0]), uy = Math.sign(a[1] - p[1]), vx = Math.sign(b[0] - p[0]), vy = Math.sign(b[1] - p[1]);
+      const sweep = (-ux) * vy - (-uy) * vx > 0 ? 1 : 0; // a right turn (clockwise) is convex
+      return (i ? 'L' : 'M') + (p[0] + ux * r) + ' ' + (p[1] + uy * r) + 'A' + r + ' ' + r + ' 0 0 ' + sweep + ' ' + (p[0] + vx * r) + ' ' + (p[1] + vy * r);
+    }).join('') + 'Z';
+  }
+  // the ISO return: a w × h box less its bottom-left corner (nw × nh), all corners rounded
+  function isoD(x, y, w, h, r, nw, nh) {
+    return roundPoly([[x, y], [x + w, y], [x + w, y + h], [x + nw, y + h], [x + nw, y + h - nh], [x, y + h - nh]], r);
   }
   function roundRect(ctx, x, y, w, h, r) {
     ctx.beginPath();

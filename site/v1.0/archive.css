@@ -1,0 +1,10 @@
+/* added when archiving (see index.html) */
+@font-face { font-family: 'JetBrains Mono'; src: url(/fonts/JetBrainsMono-500.woff2) format('woff2'); font-weight: 500; font-style: normal; font-display: swap; }
+@font-face { font-family: 'JetBrains Mono'; src: url(/fonts/JetBrainsMono-600.woff2) format('woff2'); font-weight: 600; font-style: normal; font-display: swap; }
+/* the page's own styles, as they were */
+  html, body { margin: 0; height: 100%; background: #0a0b0d; }
+  /* desktop-only: below the app's min-width the page scrolls horizontally instead of cramming */
+  body { overflow-x: auto; }
+  #app { height: 100vh; }
+/* the footer's link back to the current version */
+.opt-d .d-footer .cf-text a { color: var(--accent); pointer-events: auto; }

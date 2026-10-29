@@ -1,0 +1,262 @@
+/* ===== shared keyboard ===== */
+.opt-d .d-footer {
+  /* in-flow at the bottom (kb-wrap's auto margins push it down); shares the same
+     centered content column as .head / .kb-wrap so its edges line up with the keyboard */
+  width: 100%; max-width: var(--content-max); margin: 0 auto;
+  display: flex; align-items: center; justify-content: space-between; gap: 18px;
+  padding: 16px 0 4px; pointer-events: none;
+}
+.opt-d .d-footer .cf-meta { display: flex; align-items: center; gap: 9px; min-width: 0; }
+.opt-d .d-footer .cf-ver { flex: none; font: 600 10.5px/1 var(--mono); letter-spacing: .06em; color: var(--accent); padding: 3px 6px; border: 1px solid color-mix(in oklab, var(--accent) 35%, #23262d); border-radius: 5px; }
+.opt-d .d-footer .cf-text { font: 500 11.5px/1 var(--mono); color: #565d67; letter-spacing: .01em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.opt-d .d-footer .cf-link { font: 500 12px/1 var(--mono); letter-spacing: .04em; color: #6b7280; text-decoration: none; flex: none; pointer-events: auto; transition: color .14s ease; }
+.opt-d .d-footer .cf-link:hover { color: var(--accent); }
+.ksv-kb { display: flex; flex-direction: column; gap: var(--g, 6px); width: 100%; }
+.ksv-fnrow { display: grid; grid-template-columns: repeat(58, 1fr); gap: var(--g, 6px); }
+.ksv-row { display: grid; grid-template-columns: repeat(58, 1fr); gap: var(--g, 6px); }
+/* blank Touch ID placeholder at the end of the function row */
+.ksv-touchid { pointer-events: none; opacity: .4; }
+.ksv-touchid::after { content: ''; width: 38%; aspect-ratio: 1; border-radius: 50%; border: 1px solid var(--keyBorder); opacity: .55; }
+.ksv-key {
+  position: relative; box-sizing: border-box;
+  border: 1px solid var(--keyBorder); background: var(--keyBg); color: var(--keyFg);
+  /* key geometry derives from --keyH via the KEYSPEC ratios (see ksv.js applySpec);
+     fallbacks here mirror KEYSPEC so the stylesheet is still correct on its own */
+  border-radius: calc(var(--keyH, 56px) * var(--r-radius, 0.125)); height: var(--keyH, 58px);
+  display: flex; align-items: center; justify-content: center;
+  font: 400 max(var(--fmin-letter, 19px), calc(var(--keyH, 56px) * var(--r-letter, 0.340)))/1 var(--ui); cursor: pointer; user-select: none; padding: 0;
+  transition: transform .05s ease;
+}
+.ksv-fn { font-size: max(var(--fmin-fn, 13px), calc(var(--keyH, 56px) * var(--r-fn, 0.232))); }
+.ksv-fn.esc { flex-direction: column; align-items: flex-start; justify-content: flex-end; padding: calc(var(--keyH, 56px) * var(--r-pady, 0.143)) calc(var(--keyH, 56px) * var(--r-padx, 0.161)); }
+.ksv-fn.esc .sub { font-size: max(var(--fmin-sub, 11px), calc(var(--keyH, 56px) * var(--r-sub, 0.196))); font-weight: 500; letter-spacing: .01em; color: var(--keyFg); }
+.ksv-key.sm { flex-direction: column; align-items: flex-start; justify-content: space-between; padding: calc(var(--keyH, 56px) * var(--r-pady, 0.143)) calc(var(--keyH, 56px) * var(--r-padx, 0.161)); font-size: max(var(--fmin-fn, 13px), calc(var(--keyH, 56px) * var(--r-fn, 0.232))); }
+.ksv-key.sm .cap { font-size: max(var(--fmin-glyph, 15px), calc(var(--keyH, 56px) * var(--r-glyph, 0.268))); line-height: 1; color: var(--keyFg); }
+.ksv-key.sm.ralign { align-items: flex-end; text-align: right; }
+/* fn key (like a real Mac): globe icon bottom-left, "fn" text top-right */
+.ksv-key.sm.fnkey { flex-direction: column; justify-content: space-between; }
+.ksv-key.sm.fnkey .cap { order: 2; align-self: flex-start; }
+.ksv-key.sm.fnkey .sub { order: 1; align-self: flex-end; }
+.ic { display: block; }
+.ksv-key.modkey:not(.on) .cap, .ksv-key.hyper:not(.on) .cap { color: var(--accent); }
+.ksv-key.sm .sub { font-size: max(var(--fmin-sub, 11px), calc(var(--keyH, 56px) * var(--r-sub, 0.196))); font-weight: 500; letter-spacing: .01em; color: var(--keyFg); }
+.ksv-key:hover { border-color: var(--accent); }
+.ksv-key.is-hyper:not(.on) { border-color: var(--accent); }
+.ksv-key.is-hyper:not(.on) .cap { color: var(--accent); }
+.ksv-key.is-hyper:not(.on) .sub { color: var(--accent); }
+.ksv-key.locked { opacity: .28; cursor: not-allowed; }
+.ksv-key.locked:hover { border-color: var(--keyBorder); }
+.ksv-key.maxed { opacity: .28; cursor: not-allowed; }
+.ksv-key.maxed:hover { border-color: var(--keyBorder); }
+.ksv-key:active { transform: translateY(1px); }
+.ksv-key.dbl::after {
+  content: '2'; position: absolute; top: -6px; right: -6px; z-index: 4;
+  width: 18px; height: 18px; border-radius: 50%;
+  background: var(--accent); color: var(--onFg, #0a0b0d);
+  font: 700 11px/18px var(--ui); text-align: center;
+  box-shadow: 0 0 0 2px var(--keyBg, #131519);
+}
+.ksv-static .ksv-key.dbl::after { width: 11px; height: 11px; font-size: 7px; line-height: 11px; top: -3px; right: -3px; box-shadow: 0 0 0 1.5px var(--keyBg, #131519); }
+.ksv-key.on,
+.ksv-key.hyper.on,
+.ksv-key.modkey.on {
+  background: color-mix(in oklab, var(--accent) 32%, transparent);
+  border-color: transparent; color: var(--keyFg);
+  box-shadow: 0 0 0 1px var(--accent);
+}
+.ksv-key.on .sub { opacity: .85; }
+/* selected-key fill + ring — shared by the live selector and the export preview, and
+   mirrored on <canvas> by boardSurface(). All values come from ONSTATE (ksv.js) via
+   the --on-* custom properties, so the look stays identical across all three. */
+.opt-d .stage .ksv-key.on,
+.opt-d .is-board .ksv-key.on {
+  border: 1px solid transparent;
+  background:
+    linear-gradient(color-mix(in oklab, var(--accent) calc(var(--on-fill, 0.26) * 100%), transparent) 0 100%) padding-box,
+    linear-gradient(135deg,
+      color-mix(in oklab, var(--accent) calc(var(--on-ring-from, 0.72) * 100%), transparent),
+      color-mix(in oklab, var(--accent) calc(var(--on-ring-to, 0.16) * 100%), transparent) var(--on-ring-stop, 75%)) border-box;
+  /* solid key surface behind the translucent accent layers (matches the idle key);
+     each surface supplies its own --keyBg — solid on the preview/export, frosted on the selector */
+  background-color: var(--keyBg);
+}
+/* glow geometry is per-surface (the selector tracks the cursor; the preview is
+   static) but its accent opacity is shared via --on-glow */
+.opt-d .stage .ksv-key.on {
+  box-shadow: var(--glow-x, 0px) var(--glow-y, 0px) 16px -6px color-mix(in oklab, var(--accent) calc(var(--on-glow, 0.5) * 100%), transparent);
+}
+.ksv-arrows { display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: 1fr 1fr; gap: 3px; }
+.ksv-arrows .ar { height: calc((var(--keyH, 58px) - 3px) / 2); font-size: max(var(--fmin-sub, 11px), calc(var(--keyH, 56px) * var(--r-sub, 0.196))); border-radius: calc(var(--keyH, 56px) * var(--r-radius, 0.125) * 0.6); }
+.ar.up { grid-column: 2; grid-row: 1; } .ar.lf { grid-column: 1; grid-row: 2; }
+.ar.dn { grid-column: 2; grid-row: 2; } .ar.rt { grid-column: 3; grid-row: 2; }
+
+/* ===== shared chips / preview ===== */
+.ksv-caps { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.ksv-capsrow { display: inline-flex; align-items: center; gap: 10px; transform-origin: center; flex: none; }
+.ksv-chip {
+  position: relative;
+  display: inline-flex; flex-direction: column; align-items: center; justify-content: center;
+  width: 56px; min-width: 56px; height: 56px; padding: 0 6px; border-radius: 12px;
+  background: var(--chipBg, #1b1e24); border: 1px solid var(--chipBorder, rgba(255,255,255,.1));
+  color: var(--chipFg, #e8eaed); font: 600 24px/1 var(--ui); box-sizing: border-box;
+}
+.ksv-chip.txt .g, .ksv-chip.mod.txt .g { font-size: 16px; letter-spacing: .02em; }
+.ksv-chip .s { font-size: 10px; font-weight: 600; opacity: .8; margin-top: 4px; letter-spacing: .04em; text-transform: uppercase; }
+.ksv-chip.hyper { background: var(--accent); border-color: transparent; color: var(--onFg, #fff); }
+.ksv-chip.mod .g { font-size: 22px; }
+.ksv-chip .dbbadge {
+  position: absolute; top: -7px; right: -7px; width: 19px; height: 19px; border-radius: 50%;
+  background: var(--accent); color: var(--onFg, #0a0b0d);
+  font: 700 11px/19px var(--ui); text-align: center;
+  box-shadow: 0 0 0 2px var(--chipBg, #131519);
+}
+.ksv-chip:not(.mod):not(.txt) .g { font-size: 18px; }
+.ksv-chip.sym .g { font-size: 24px; }
+.ksv-plus { font: 500 20px/1 var(--ui); color: var(--muted, #5b6472); }
+.ksv-empty { font: 500 15px/1.4 var(--ui); color: var(--muted, #5b6472); }
+
+/* ===== canvas frame resets ===== */
+.ksv-app { box-sizing: border-box; width: 100%; height: 100%; font-family: var(--ui); -webkit-font-smoothing: antialiased; }
+.ksv-app * { box-sizing: border-box; }
+
+/* ================= OPTION D — Console Inspector (primary) ================= */
+.opt-d {
+  --ui: -apple-system, 'SF Pro Display', ui-sans-serif, system-ui, sans-serif;
+  --mono: 'JetBrains Mono', ui-monospace, 'SF Mono', monospace;
+  --accent: #22d3ee; --onFg: #0a0b0d;
+  --keyFg: #d7dbe0; --keyBorder: #23262d;
+  /* translucent so the live keys read frosted over the panel; the flat export and
+     its preview use the solid colour instead (KSV.KEYBG, applied via applySpec) */
+  --keyBg: rgba(19,21,25,0.6);
+  --chipBg: #131519; --chipFg: #e6eaef; --chipBorder: #23262d; --muted: #5a616b;
+  background: #0a0b0d; color: #d7dbe0;
+  position: relative;
+  /* desktop-only: never let the layout cram below this — narrower viewports scroll horizontally */
+  min-width: 1120px;
+  /* rail grows gently on large screens, the stage (1fr) takes the rest */
+  display: grid; grid-template-columns: 1fr 300px;
+  /* content max-width that the stage column centers around (see .head / .kb-wrap / .d-footer) */
+  --content-max: 1180px;
+}
+.opt-d .frame-grid {
+  position: absolute; inset: 0; z-index: 0; pointer-events: none;
+  background-image: linear-gradient(#ffffff05 1px, transparent 1px), linear-gradient(90deg, #ffffff05 1px, transparent 1px);
+  background-size: 30px 30px;
+}
+/* left stage */
+.opt-d .stage {
+  position: relative; z-index: 1; padding: 30px 32px; display: flex; flex-direction: column; min-width: 0;
+}
+.opt-d .stage > * { position: relative; z-index: 1; }
+.opt-d .grid-lit {
+  position: absolute; inset: 0; z-index: 0; pointer-events: none;
+  background-image:
+    linear-gradient(color-mix(in oklab, var(--accent) 28%, transparent) 1px, transparent 1px),
+    linear-gradient(90deg, color-mix(in oklab, var(--accent) 28%, transparent) 1px, transparent 1px);
+  background-size: 30px 30px;
+  background-position: var(--vx, 0px) var(--vy, 0px);
+  -webkit-mask-image: radial-gradient(var(--glow-r, 90px) circle at var(--gx, 50%) var(--gy, -40%), #000, rgba(0,0,0,.3) 50%, transparent 72%);
+  mask-image: radial-gradient(var(--glow-r, 90px) circle at var(--gx, 50%) var(--gy, -40%), #000, rgba(0,0,0,.3) 50%, transparent 72%);
+}
+.opt-d .head { width: 100%; max-width: var(--content-max); margin: 0 auto 22px; }
+.opt-d .head .eyebrow { display: block; font: 600 11px/1 var(--ui); letter-spacing: .2em; text-transform: uppercase; color: var(--accent); margin-bottom: 11px; }
+.opt-d .head .title { margin: 0; font: 700 clamp(36px, 2.4vw, 48px)/1 var(--ui); letter-spacing: -.025em; color: #f4f6f7; }
+.opt-d .head .lede { margin: 13px 0 0; font: 500 12.5px/1.5 var(--mono); color: #6b7280; }
+.opt-d .head .lede b { color: var(--accent); font-weight: 600; }
+.opt-d .panel { border: 1px solid #1d2026; background: rgba(13,15,18,0.4); -webkit-backdrop-filter: blur(3px); backdrop-filter: blur(3px); border-radius: 12px; padding: 22px; margin: 0; }
+.opt-d .kb-wrap { margin: auto; width: 100%; max-width: var(--content-max); }
+.opt-d .kb-foot { display: flex; justify-content: flex-end; margin-top: 12px; }
+.opt-d .reset-btn {
+  display: inline-flex; align-items: center; gap: 6px; padding: 6px 0; background: none; border: none;
+  cursor: pointer; font: 500 12px/1 var(--mono); letter-spacing: .04em; color: #6b7280; transition: color .14s ease;
+}
+.opt-d .reset-btn:hover { color: var(--accent); }
+
+/* modifier-key controls live in the main frame, by the keyboard */
+.opt-d .kb-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 14px 26px; margin: 0 0 16px; }
+.opt-d .kbc { display: flex; align-items: center; gap: 10px; }
+.opt-d .kbc.accent-kbc { margin-left: auto; }
+.opt-d .kbc.accent-kbc .swatches { gap: 6px; }
+.opt-d .kbc.accent-kbc .sw-chip { width: 22px; height: 22px; border-radius: 6px; }
+.opt-d .kbc-l { font: 500 12.5px/1 var(--mono); color: #7b828c; }
+
+/* right rail — floats over the grid like the keyboard case */
+.opt-d .rail {
+  position: relative; z-index: 1;
+  margin: 16px 16px 16px 0;
+  /* match the keyboard case (.panel) so both floating surfaces read the same:
+     same border, radius, fill, blur, and no shadow */
+  border: 1px solid #1d2026; border-radius: 12px;
+  background: rgba(13,15,18,0.4);
+  -webkit-backdrop-filter: blur(3px); backdrop-filter: blur(3px);
+  display: flex; flex-direction: column; min-height: 0; overflow: hidden;
+}
+.opt-d .rlbl { font: 500 11px/1 var(--mono); letter-spacing: .04em; color: #4f565f; }
+.opt-d .prev-card {
+  margin-top: 12px; min-height: 80px; border: 1px solid #1d2026; background: #0a0b0d;
+  border-radius: 10px; padding: 16px 14px; display: flex; align-items: center; justify-content: center; overflow: hidden;
+  background-image: linear-gradient(#ffffff04 1px, transparent 1px), linear-gradient(90deg, #ffffff04 1px, transparent 1px);
+  background-size: 14px 14px;
+}
+
+.opt-d .inspector { flex: 1; overflow-y: auto; overflow-x: hidden; padding: 20px; display: flex; flex-direction: column; gap: 32px; }
+.opt-d .grp { display: flex; flex-direction: column; gap: 13px; }
+.opt-d .grp-h { font: 600 10.5px/1 var(--mono); letter-spacing: .16em; text-transform: uppercase; color: #5f6775; margin-bottom: 5px; }
+.opt-d .fl-row { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+.opt-d .cap { font: 500 11.5px/1 var(--mono); color: var(--accent); letter-spacing: .01em; }
+.opt-d .seg { display: inline-flex; gap: 3px; background: #0a0b0d; border: 1px solid #1d2026; border-radius: 8px; padding: 3px; }
+.opt-d .seg.wide { width: 100%; }
+.opt-d .seg.wide button { flex: 1; }
+.opt-d .seg button { height: 27px; padding: 0 11px; border: none; background: none; border-radius: 5px; font: 600 11.5px/1 var(--mono); color: #8a93a0; cursor: pointer; text-transform: lowercase; }
+.opt-d .seg button.on { background: var(--accent); color: var(--onFg, #0a0b0d); }
+.opt-d .seg button:not(.on):not(.is-off):hover { background: #1b1f25; color: #cfd4da; }
+.opt-d .seg-beta { margin-left: 5px; padding: 0 4px; border: 1px solid currentColor; border-radius: 3px; font-size: 8.5px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; opacity: .65; vertical-align: middle; }
+.opt-d .seg button.is-off { opacity: .3; cursor: not-allowed; }
+.opt-d .seg.disabled { opacity: .42; }
+.opt-d .seg.disabled button { cursor: not-allowed; }
+
+.opt-d .rail-foot { padding: 16px 20px 20px; border-top: 1px solid #16191d; display: flex; gap: 10px; }
+.opt-d .rail-foot .go { flex: 1; height: 40px; border-radius: 8px; border: none; background: var(--accent); color: var(--onFg, #0a0b0d); font: 700 13px/1 var(--mono); cursor: pointer; text-transform: lowercase; }
+.opt-d .rail-foot .go:hover { filter: brightness(1.06); }
+
+/* preview pinned at the bottom of the rail */
+.opt-d .rail-prev { padding: 18px 20px; border-top: 1px solid #16191d; }
+.opt-d .rail-prev .rlbl { color: #4f565f; }
+.opt-d .rail-prev .cap { color: var(--accent); }
+
+/* ===== shared accent swatches ===== */
+.swatches { display: flex; gap: 7px; }
+.sw-chip { width: 26px; height: 26px; border-radius: 7px; border: 2px solid transparent; cursor: pointer; padding: 0; box-shadow: inset 0 0 0 1px rgba(255,255,255,.14); transition: transform .08s ease; }
+.sw-chip:hover { transform: translateY(-1px); }
+.sw-chip.on { border-color: #f4f6f4; box-shadow: inset 0 0 0 1px rgba(0,0,0,.35); }
+
+/* ===== preview background variants ===== */
+/* dark export is a flat #0a0b0d fill — drop the preview grid so it matches */
+.ksv-app .prev-card.bg-dark { background-image: none; }
+.ksv-app .prev-card.bg-light { background: #f3f0f8; background-image: none; border-color: #e2dcec; }
+.ksv-app .bg-light .ksv-plus { color: #9aa094; }
+.ksv-app .prev-card.bg-trans {
+  background-color: #0c0d10;
+  background-image: conic-gradient(#ffffff12 90deg, transparent 90deg 180deg, #ffffff12 180deg 270deg, transparent 270deg);
+  background-size: 18px 18px;
+}
+
+/* ===== board preview — the same keyboard as the selector, scaled down =====
+   The preview is a real (static) selector keyboard: it inherits every KEYSPEC
+   ratio, so it shares the selector's exact proportions. Only the px floors are
+   zeroed (via the static flag in applySpec) so labels shrink with the keys. */
+.ksv-app .is-board .ksv-kb { width: 100%; }
+/* solid key surface (--keyBg) is set on the preview keyboard by applySpec from the
+   shared KSV.KEYBG, so it always matches the export */
+.ksv-app .is-board .ksv-key { min-height: 0; }
+.ksv-app .is-board .ksv-key.sm .sub { display: block; }
+.ksv-app .is-board .ksv-fnrow { gap: var(--g); }
+.ksv-app .is-board .ksv-arrows { gap: 2px; }
+.ksv-app .is-board .ksv-arrows .ar { height: calc((var(--keyH) - 2px) / 2); }
+.ksv-app .is-board .ksv-key:hover { border-color: var(--keyBorder); }
+/* board preview shares the fill + ring rule above; only its static glow differs */
+.opt-d .is-board .ksv-key.on {
+  box-shadow: 0 0 12px -4px color-mix(in oklab, var(--accent) calc(var(--on-glow, 0.5) * 100%), transparent);
+}
+/* static export-preview keyboard is display-only, not interactive */
+.ksv-static .ksv-key { pointer-events: none; cursor: default; }

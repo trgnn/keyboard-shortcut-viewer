@@ -7,6 +7,9 @@
 //   The SVG must hold no <text> (labels are outlines).
 // - behaviour: clicks resolve at once (reset / export right after a modifier click), five
 //   modifiers, the greyed-keys option, copy, CSP violations, accessible names, idle glow.
+// - keyboards: every keyboard / language / look from the dropdowns keeps the keyboard's
+//   height and carries ⌘K over; a list closes when the keyboard takes the pointer; ⇧S folds
+//   the rail and the toggle follows it.
 (async () => {
   const violations = [];
   document.addEventListener('securitypolicyviolation', (e) => violations.push(e.violatedDirective + ' ' + e.blockedURI));
@@ -108,6 +111,33 @@
 
   results.fonts = [...document.fonts].map((f) => f.family.replace(/"/g, '') + ' ' + f.weight + ' ' + f.status);
   results.cspViolations = violations;
+
+  // keyboards: each dropdown choice rebuilds the keyboard at the same height, ⌘K carried over
+  const pick = async (id, label) => {
+    $('#' + id + ' .pick-btn').click(); await wait(20);
+    const o = [...document.querySelectorAll('#' + id + ' .pick-opt')].find((n) => (n.getAttribute('aria-label') || n.textContent) === label);
+    if (o) o.click(); await wait(80);
+    return !!o;
+  };
+  const kbH = () => Math.round($('#kbMount .ksv-kb').getBoundingClientRect().height);
+  clearKeys(); key('cmd').click(); await wait(250); key('k').click(); await wait(250);
+  const h0 = kbH(), seen = [];
+  for (const [id, label] of [['langPick', 'AZERTY FR'], ['lookPick', 'Custom modifiers'], ['osPick', 'Windows / Linux'],
+    ['lookPick', 'Linux logo and super'], ['langPick', 'QWERTY US'], ['lookPick', 'Framework logo'], ['osPick', 'MacBook'], ['lookPick', 'Default modifiers']]) {
+    const found = await pick(id, label);
+    seen.push(label + (found ? '' : ' (missing)') + ': ' + $('#kbMount .ksv-kb').dataset.kb + (kbH() === h0 ? '' : ' height ' + kbH()) +
+      (key('cmd').classList.contains('on') && key('k').classList.contains('on') ? '' : ' lost ⌘K'));
+  }
+  results.keyboards = seen;
+  $('#osPick .pick-btn').click(); await wait(20);
+  $('.panel').dispatchEvent(new MouseEvent('mouseenter'));
+  results.listClosesOnKeyboard = $('#osPick .pick-list').hidden;
+  const btnRight = () => Math.round($('#railBtn').getBoundingClientRect().right);
+  const open = btnRight();
+  window.dispatchEvent(new KeyboardEvent('keydown', { key: 'S', shiftKey: true })); await wait(450);
+  const folded = { railInert: $('.rail').inert, toggleMoved: btnRight() > open };
+  window.dispatchEvent(new KeyboardEvent('keydown', { key: 'S', shiftKey: true })); await wait(450);
+  results.railFold = { ...folded, back: btnRight() === open && !$('.rail').inert };
 
   // keycaps with nothing selected: nothing to export or copy
   seg('layoutSeg', 2); clearKeys(); await wait(30);

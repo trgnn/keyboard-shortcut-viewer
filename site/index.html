@@ -4,13 +4,13 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Keyboard Shortcut Viewer</title>
-<meta name="description" content="Pick any Mac shortcut and export it as a clean image — the full MacBook keyboard or compact keycaps, in PNG, JPG, WebP, or SVG. Hyperkey, left/right modifiers, double-tap. Runs in the browser, no sign-up." />
+<meta name="description" content="Pick any keyboard shortcut, on Mac, Windows or Linux, and export it as a clean image — the full keyboard or compact keycaps, in PNG, JPG, WebP, or SVG. QWERTY or AZERTY, hyperkey, left/right modifiers, double-tap. Runs in the browser, no sign-up." />
 <meta name="theme-color" content="#0a0b0d" />
 <meta name="color-scheme" content="dark" />
 <link rel="canonical" href="https://ksv.trognon.space/" />
 <meta property="og:site_name" content="Keyboard Shortcut Viewer" />
 <meta property="og:title" content="Keyboard Shortcut Viewer" />
-<meta property="og:description" content="Pick any Mac shortcut and export it as a clean image — full keyboard or keycaps. No install, no sign-up." />
+<meta property="og:description" content="Pick any keyboard shortcut, on Mac, Windows or Linux, and export it as a clean image — full keyboard or keycaps. No install, no sign-up." />
 <meta property="og:type" content="website" />
 <meta property="og:url" content="https://ksv.trognon.space/" />
 <meta property="og:image" content="https://ksv.trognon.space/og-preview.png" />
@@ -19,7 +19,7 @@
 <meta property="og:image:alt" content="Keyboard Shortcut Viewer: a MacBook keyboard with ⌘K selected, next to the export panel." />
 <meta name="twitter:card" content="summary_large_image" />
 <meta name="twitter:title" content="Keyboard Shortcut Viewer" />
-<meta name="twitter:description" content="Pick any Mac shortcut and export it as a clean image — full keyboard or keycaps. No install, no sign-up." />
+<meta name="twitter:description" content="Pick any keyboard shortcut, on Mac, Windows or Linux, and export it as a clean image — full keyboard or keycaps. No install, no sign-up." />
 <meta name="twitter:image" content="https://ksv.trognon.space/og-preview.png" />
 <link rel="icon" href="/favicon.ico" sizes="any" />
 <link rel="icon" href="/favicon/favicon.svg" type="image/svg+xml" />
@@ -32,7 +32,7 @@
 <body>
 <!-- small screens only (styles.css): the app is desktop-sized and scrolls sideways -->
 <div class="small-screen" role="note">
-  <span>Built for a desktop screen: here the keyboard scrolls sideways.</span>
+  <span>Built for desktop screens, scrolls sideways.</span>
   <button id="smallScreenClose" aria-label="dismiss"><i data-icon="cross"></i></button>
 </div>
 <div id="app" class="ksv-app opt-d">
@@ -43,11 +43,24 @@
     <div class="head">
       <span class="eyebrow">keyboard</span>
       <h1 class="title">Shortcut Viewer</h1>
-      <p class="lede">double-click a key for a double-tap · <b><i data-icon="shift"></i>R</b> clear keys · <b><i data-icon="shift"></i>L</b> change layout · <b><i data-icon="shift"></i>D</b> export · <b><i data-icon="shift"></i>C</b> copy</p>
+      <p class="lede">double-click a key for a double-tap · <b><i data-icon="shift"></i>R</b> clear keys · <b><i data-icon="shift"></i>D</b> export · <b><i data-icon="shift"></i>C</b> copy · <b><i data-icon="shift"></i>S</b> sidebar</p>
     </div>
 
     <div class="kb-wrap">
       <div class="kb-controls">
+        <div class="kb-picks">
+          <div class="kbc kb-pick" id="osPick"></div>
+          <div class="kbc kb-pick" id="langPick"></div>
+          <div class="kbc kb-pick" id="lookPick"></div>
+        </div>
+        <div class="kbc accent-kbc">
+          <div class="swatches" id="accentSwatches"></div>
+        </div>
+      </div>
+
+      <div class="panel"><div id="kbMount"></div></div>
+
+      <div class="kb-controls kb-below">
         <div class="kbc">
           <span class="kbc-l">hyperkey</span>
           <div class="seg" id="hyperSeg"></div>
@@ -60,21 +73,17 @@
           <span class="kbc-l" title="several trigger keys in a row">combo mode</span>
           <div class="seg" id="comboSeg"></div>
         </div>
-        <div class="kbc accent-kbc">
-          <div class="swatches" id="accentSwatches"></div>
-        </div>
       </div>
-
-      <div class="panel"><div id="kbMount"></div></div>
     </div>
 
     <footer class="d-footer">
-      <span class="cf-meta"><span class="ver-menu" hidden><button class="cf-ver" id="verBtn" aria-haspopup="menu" aria-expanded="false" aria-controls="verList"></button><span class="ver-list" id="verList" role="menu" hidden></span></span><span class="cf-text">A clean visual for any shortcut on MacBook, because I needed one for a blog article.</span></span>
+      <span class="cf-meta"><span class="ver-menu" hidden><button class="cf-ver" id="verBtn" aria-haspopup="menu" aria-expanded="false" aria-controls="verList"></button><span class="ver-list" id="verList" role="menu" hidden></span></span><span class="cf-text">A clean visual for any keyboard shortcut, on Mac, Windows or Linux.</span></span>
       <a class="cf-link" href="https://trognon.space" target="_blank" rel="noopener noreferrer">trognon.space<i data-icon="external"></i></a>
     </footer>
   </div>
 
-  <aside class="rail">
+  <button class="rail-btn" id="railBtn" aria-controls="rail"><i data-icon="sidebar"></i></button>
+  <aside class="rail" id="rail">
     <div class="inspector">
       <section class="grp">
         <div class="grp-h">layout</div>
