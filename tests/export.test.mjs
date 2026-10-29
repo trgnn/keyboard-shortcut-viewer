@@ -14,8 +14,10 @@ const state = (sel, extra = {}) => ({ sel: new Set(sel), dbl: new Set(), lr: fal
 const CASES = {
   'board-cmd-k': [state(['cmd', 'k']), { layout: 'board' }],
   'board-hyper-space': [state(['caps', 'space'], { hyper: true, locked: new Set(['ctrl', 'opt', 'cmd', 'rcmd', 'ropt']) }), { layout: 'board' }],
-  'board-five-mods-undimmed': [state(['fn', 'ctrl', 'opt', 'lshift', 'cmd']), { layout: 'board', dim: false }],
+  'board-five-mods': [state(['fn', 'ctrl', 'opt', 'lshift', 'cmd']), { layout: 'board' }],
   'board-double-shift-lr': [state(['rshift'], { lr: true, dbl: new Set(['rshift']) }), { layout: 'board' }],
+  'board-frame-grid': [state(['cmd', 'k']), { layout: 'board', frame: true, grid: true, gridColor: 'rgba(255,255,255,.02)' }],
+  'board-translucent-frame': [state(['cmd', 'k']), { layout: 'board', frame: true, keyBg: 'rgba(19,21,25,0.6)', frameFill: 'rgba(13,15,18,0.4)' }],
   'keycaps-hyper-f12': [state(['caps', 'F12'], { hyper: true }), { layout: 'keycaps' }],
 };
 

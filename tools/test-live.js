@@ -18,7 +18,9 @@
   const setScale = (v) => { range.value = v; range.dispatchEvent(new Event('input')); };
   const load = (src) => new Promise((r, j) => { const i = new Image(); i.onload = () => r(i); i.onerror = j; i.src = src; });
 
-  // capture downloads instead of saving them
+  // capture downloads instead of saving them (exports are object URLs: keep their blobs)
+  const blobs = new Map(), makeURL = URL.createObjectURL;
+  URL.createObjectURL = (b) => { const u = makeURL(b); blobs.set(u, b); return u; };
   const files = [];
   const click = HTMLAnchorElement.prototype.click;
   HTMLAnchorElement.prototype.click = function () { if (this.download) files.push({ name: this.download, href: this.href }); else click.call(this); };
@@ -43,7 +45,7 @@
     for (let i = 0; i < p.length; i += 4) {
       if ((Math.abs(p[i] - q[i]) + Math.abs(p[i + 1] - q[i + 1]) + Math.abs(p[i + 2] - q[i + 2])) / 3 > 40) over++;
     }
-    const markup = decodeURIComponent(svg.href.split(',')[1]);
+    const markup = await blobs.get(svg.href).text();
     return { file: svg.name, size: W + 'x' + H, over40: (over / (W * H) * 100).toFixed(2) + '%', textTags: (markup.match(/<text/g) || []).length };
   }
 
@@ -72,18 +74,12 @@
   const exported = (await download()).name;
   results.clickResolution = { afterReset, exportRightAfterClick: exported };
 
-  // ⌃⌥⇧⌘ + fn, and the greyed-keys option on the export and its preview
+  // ⌃⌥⇧⌘ + fn; the keys left unavailable are greyed out on screen and in the preview alike
   $('#resetBtn').click(); await wait(30);
   for (const c of ['fn', 'ctrl', 'opt', 'lshift', 'cmd']) { key(c).click(); await wait(260); }
   const held = [...document.querySelectorAll('#kbMount .ksv-key.on')].map((k) => k.dataset.code).filter((c) => !['rshift', 'rcmd', 'ropt'].includes(c));
-  seg('dimSeg', 1); await wait(30);
-  const prevDimmed = document.querySelectorAll('#preview .ksv-key.maxed').length;
-  const dimmed = await download();
-  seg('dimSeg', 2); await wait(30);
-  const prevPlain = document.querySelectorAll('#preview .ksv-key.maxed').length;
-  const plain = await download();
-  seg('dimSeg', 1);
-  results.fiveMods = { held, previewMaxed: { dimmed: prevDimmed, normal: prevPlain }, exportsDiffer: dimmed.href !== plain.href };
+  const maxed = (root) => [...document.querySelectorAll(root + ' .ksv-key.maxed')].map((k) => k.dataset.code).join();
+  results.fiveMods = { held, maxedOnScreen: maxed('#kbMount'), maxedInPreview: maxed('#preview') };
 
   // copy is only offered for the formats the clipboard takes
   results.copyEnabled = {};
@@ -111,7 +107,13 @@
   results.fonts = [...document.fonts].map((f) => f.family.replace(/"/g, '') + ' ' + f.weight + ' ' + f.status);
   results.cspViolations = violations;
 
+  // keycaps with nothing selected: nothing to export or copy
+  seg('layoutSeg', 2); $('#resetBtn').click(); await wait(30);
+  results.emptyKeycaps = { exportDisabled: $('#exportBtn').disabled, copyDisabled: $('#copyBtn').disabled };
+  seg('layoutSeg', 1);
+
   HTMLAnchorElement.prototype.click = click;
+  URL.createObjectURL = makeURL;
   try { localStorage.removeItem('ksv-ui-v1'); } catch (e) { /* ignore */ }
   return results;
 })()
