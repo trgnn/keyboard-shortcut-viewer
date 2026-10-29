@@ -10,13 +10,18 @@
 // - keyboards: every keyboard / language / look from the dropdowns keeps the keyboard's
 //   height and carries ⌘K over; a list closes when the keyboard takes the pointer; ⇧S folds
 //   the rail and the toggle follows it.
+// - shortcuts: a swatch picks the shortcut to edit, a key in two shows both colours, ⇧R clears
+//   only the one being edited, an empty one shows as an outline; a swatch's clear button
+//   empties its shortcut; multi shortcut off leaves one shortcut, recoloured by the swatches.
+// - colours: a swatch's edit button opens the picker above it (inside the window); a hex
+//   recolours the swatch and the keys, *default* brings the colour back, Escape closes.
 (async () => {
   const violations = [];
   document.addEventListener('securitypolicyviolation', (e) => violations.push(e.violatedDirective + ' ' + e.blockedURI));
   const wait = (ms) => new Promise((r) => setTimeout(r, ms));
   const $ = (s) => document.querySelector(s);
   const key = (c) => $('#kbMount .ksv-key[data-code="' + c + '"]');
-  // clear keys: the ⇧R hotkey (no button since v1.3)
+  // clear keys: the ⇧R hotkey (no button since v1.3), every shortcut
   const clearKeys = () => window.dispatchEvent(new KeyboardEvent('keydown', { key: 'R', shiftKey: true }));
   const seg = (id, i) => $('#' + id + ' button:nth-child(' + i + ')').click();
   const range = $('#scaleRange');
@@ -138,6 +143,57 @@
   const folded = { railInert: $('.rail').inert, toggleMoved: btnRight() > open };
   window.dispatchEvent(new KeyboardEvent('keydown', { key: 'S', shiftKey: true })); await wait(450);
   results.railFold = { ...folded, back: btnRight() === open && !$('.rail').inert };
+
+  // shortcuts: one per swatch; a key in two of them carries both colours
+  const chips = () => [...document.querySelectorAll('#accentSwatches .sw-chip')];
+  results.multiDefaultOff = $('#multiSeg button.on').textContent === 'off' && $('#digitHint').textContent === 'color';
+  $('#multiSeg button:last-child').click(); await wait(30);
+  results.digitHintOn = $('#digitHint').textContent === 'shortcut';
+  clearKeys(); await wait(30);
+  key('cmd').click(); await wait(250); key('k').click(); await wait(250);
+  chips()[1].click(); await wait(30);
+  key('cmd').click(); await wait(250); key('c').click(); await wait(250);
+  const shared = key('cmd').classList.contains('multi') && key('k').classList.contains('on') && key('c').classList.contains('on');
+  document.querySelectorAll('#accentSwatches .sw-clear')[1].click(); await wait(30);
+  results.shortcuts = { shared, clearsOnlyActive: key('cmd').classList.contains('on') && !key('cmd').classList.contains('multi') && !key('c').classList.contains('on'),
+    emptyOutlined: chips()[1].classList.contains('empty') && !chips()[0].classList.contains('empty') };
+  chips()[1].click(); await wait(30); key('c').click(); await wait(250);
+  document.querySelectorAll('#accentSwatches .sw-clear')[0].click(); await wait(30);
+  results.shortcuts.clearButton = !key('k').classList.contains('on') && key('c').classList.contains('on');
+  $('#multiSeg button:first-child').click(); await wait(30);
+  chips()[3].click(); await wait(30);
+  results.shortcuts.multiOff = key('c').classList.contains('on') && getComputedStyle(key('c')).getPropertyValue('--accent').trim() === '#ff3d8b'
+    && !document.querySelector('#accentSwatches .sw-chip.empty');
+  $('#multiSeg button:last-child').click(); await wait(30);
+  // ⇧2 picks the second shortcut (by the digit key's place); ⇧R empties them all
+  window.dispatchEvent(new KeyboardEvent('keydown', { key: '@', code: 'Digit2', shiftKey: true })); await wait(30);
+  results.shortcuts.shiftDigit = chips()[1].classList.contains('on');
+  clearKeys(); await wait(30);
+  results.shortcuts.clearsAll = !document.querySelector('#kbMount .ksv-key.on') && chips().every((c) => c.classList.contains('empty'));
+  chips()[0].click(); await wait(30);
+  $('#multiSeg button:first-child').click(); await wait(30);
+
+  // double-tap off: a double-click is two clicks (no badge), and existing double-taps go
+  clearKeys(); await wait(30);
+  key('k').click(); await wait(60); key('k').click(); await wait(300);
+  const dblOn = key('k').classList.contains('dbl');
+  $('#dblSeg button:first-child').click(); await wait(30);
+  const cleared = !key('k').classList.contains('dbl');
+  key('j').click(); await wait(60); key('j').click(); await wait(300);
+  results.doubleTapOption = { dblOn, cleared, offTwoClicks: !key('j').classList.contains('dbl') && !key('j').classList.contains('on') };
+  $('#dblSeg button:last-child').click(); await wait(30);
+  clearKeys(); await wait(30);
+
+  // colours: edit the first (the one in use) through the picker's hex, then back to default
+  document.querySelector('#accentSwatches .sw-edit').click(); await wait(30);
+  const pk = $('.picker'), hexIn = pk.querySelector('.pk-hex'), pr = pk.getBoundingClientRect();
+  hexIn.focus(); hexIn.value = '#ffd400'; hexIn.dispatchEvent(new Event('input')); await wait(30);
+  const recoloured = getComputedStyle(document.documentElement.querySelector('#app')).getPropertyValue('--accent').trim() === '#ffd400'
+    && chips()[0].style.getPropertyValue('--sw') === '#ffd400';
+  pk.querySelector('.pk-reset').click(); await wait(30);
+  const back = chips()[0].style.getPropertyValue('--sw') === '#22d3ee' && pk.querySelector('.pk-reset').hidden;
+  document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })); await wait(30);
+  results.colors = { inWindow: pr.top >= 0, recoloured, back, closes: !$('.picker') };
 
   // keycaps with nothing selected: nothing to export or copy
   seg('layoutSeg', 2); clearKeys(); await wait(30);

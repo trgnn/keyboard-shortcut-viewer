@@ -43,7 +43,7 @@
     <div class="head">
       <span class="eyebrow">keyboard</span>
       <h1 class="title">Shortcut Viewer</h1>
-      <p class="lede">double-click a key for a double-tap · <b><i data-icon="shift"></i>R</b> clear keys · <b><i data-icon="shift"></i>D</b> export · <b><i data-icon="shift"></i>C</b> copy · <b><i data-icon="shift"></i>S</b> sidebar</p>
+      <p class="lede"><b><i data-icon="shift"></i>1–5</b> <span id="digitHint">color</span> · <span class="hint-rail"><b><i data-icon="shift"></i>S</b> sidebar · </span><b><i data-icon="shift"></i>R</b> clear keys · <b><i data-icon="cmd"></i><i data-icon="shift"></i>R</b> clear settings</p>
     </div>
 
     <div class="kb-wrap">
@@ -54,6 +54,8 @@
           <div class="kbc kb-pick" id="lookPick"></div>
         </div>
         <div class="kbc accent-kbc">
+          <span class="kbc-l" title="one shortcut per color">multi shortcut</span>
+          <div class="seg" id="multiSeg"></div>
           <div class="swatches" id="accentSwatches"></div>
         </div>
       </div>
@@ -62,15 +64,19 @@
 
       <div class="kb-controls kb-below">
         <div class="kbc">
-          <span class="kbc-l">hyperkey</span>
+          <span class="kbc-l" title="caps lock as ctrl, opt and cmd">hyper</span>
           <div class="seg" id="hyperSeg"></div>
         </div>
         <div class="kbc">
-          <span class="kbc-l">distinguish L/R</span>
+          <span class="kbc-l" title="tell left and right modifiers apart">L/R</span>
           <div class="seg" id="lrSeg"></div>
         </div>
         <div class="kbc">
-          <span class="kbc-l" title="several trigger keys in a row">combo mode</span>
+          <span class="kbc-l" title="double-click a key to press it twice">2-tap</span>
+          <div class="seg" id="dblSeg"></div>
+        </div>
+        <div class="kbc">
+          <span class="kbc-l" title="several trigger keys in a row">combo</span>
           <div class="seg" id="comboSeg"></div>
         </div>
       </div>
@@ -131,8 +137,8 @@
     </div>
 
     <div class="rail-foot">
-      <button class="go" id="exportBtn">export</button>
       <button class="go alt" id="copyBtn">copy</button>
+      <button class="go" id="exportBtn">export</button>
     </div>
   </aside>
 </div>

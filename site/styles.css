@@ -111,7 +111,7 @@ body { overflow: auto; }
 .ksv-key.dbl::after {
   content: '2'; position: absolute; top: -6px; right: -6px; z-index: 4;
   width: 18px; height: 18px; border-radius: 50%;
-  background: var(--accent); color: var(--onFg, #0a0b0d);
+  background: var(--badge, var(--accent)); color: var(--badge-fg, var(--onFg, #0a0b0d));
   font: 700 11px/18px var(--key); text-align: center;
   box-shadow: 0 0 0 2px var(--keyBg, #131519);
 }
@@ -137,6 +137,15 @@ body { overflow: auto; }
       color-mix(in oklab, var(--accent) calc(var(--on-ring-to, 0.16) * 100%), transparent) var(--on-ring-stop, 75%)) border-box;
   /* solid key surface behind the translucent accent layers (matches the idle key);
      each surface supplies its own --keyBg — solid on the preview/export, frosted on the selector */
+  background-color: var(--keyBg);
+}
+/* a key in several shortcuts (ksv.js paint): their colours in a soft 135° gradient (--multi,
+   ONSTATE.multi), the wash and glows in their average (--accent, set on the key) */
+.opt-d .stage .ksv-key.on.multi,
+.opt-d .is-board .ksv-key.on.multi {
+  background:
+    linear-gradient(color-mix(in oklab, var(--accent) calc(var(--on-fill, 0.26) * 100%), transparent) 0 100%) padding-box,
+    var(--multi) border-box;
   background-color: var(--keyBg);
 }
 /* glow geometry is per-surface (the selector tracks the cursor; the preview is
@@ -300,7 +309,8 @@ body { overflow: auto; }
 }
 .opt-d .pick-opt:hover, .opt-d .pick-opt:focus-visible { background: var(--field-hover); color: var(--field-hover-text); outline: none; }
 .opt-d .pick-opt.on { background: var(--accent); color: var(--onFg, #0a0b0d); }
-.opt-d .kbc.accent-kbc .swatches { gap: 6px; }
+/* the multi shortcut switch, then its swatches (one per shortcut) */
+.opt-d .kbc.accent-kbc .swatches { gap: 6px; margin-left: 6px; }
 .opt-d .kbc.accent-kbc .sw-chip { width: 22px; height: 22px; border-radius: 6px; }
 .opt-d .kbc-l { font: 500 12.5px/1 var(--mono); color: var(--label); }
 
@@ -397,8 +407,16 @@ body { overflow: auto; }
 .opt-d .rail-foot { padding: 16px 20px 20px; border-top: 1px solid var(--line-soft); display: flex; gap: 10px; }
 .opt-d .rail-foot .go { flex: 1; white-space: nowrap; display: flex; align-items: center; justify-content: center; gap: 6px; height: 40px; border-radius: 8px; border: none; background: var(--accent); color: var(--onFg, #0a0b0d); font: 700 13px/1 var(--mono); cursor: pointer; text-transform: lowercase; }
 .opt-d .rail-foot .go:hover { filter: brightness(1.06); }
+/* the button's hotkey on its right edge, the label on the left, in a small box tinted by the
+   label's colour */
+.opt-d .rail-foot .go:has(kbd) { justify-content: flex-start; padding: 0 8px 0 14px; }
+.opt-d .rail-foot .go kbd {
+  display: inline-flex; align-items: center; gap: 1px; margin-left: auto; padding: 3px 5px; border-radius: 5px;
+  font: 600 10.5px/1 var(--mono); text-transform: none; background: color-mix(in oklab, currentColor 14%, transparent);
+}
+.opt-d .rail-foot .go kbd .ic { width: 11px; height: 11px; }
 /* secondary action next to download: outlined, fills once copied */
-.opt-d .rail-foot .go.alt { flex: none; padding: 0 14px; background: none; color: var(--accent-ink); box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--accent) 45%, transparent); }
+.opt-d .rail-foot .go.alt { flex: 1; background: none; color: var(--accent-ink); box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--accent) 45%, transparent); }
 .opt-d .rail-foot .go.alt:hover { filter: none; background: color-mix(in oklab, var(--accent) 12%, transparent); }
 .opt-d .rail-foot .go.alt:disabled { opacity: .42; cursor: not-allowed; background: none; }
 .opt-d .rail-foot .go.alt.is-done { background: color-mix(in oklab, var(--accent) 18%, transparent); }
@@ -409,9 +427,64 @@ body { overflow: auto; }
 
 /* ===== shared accent swatches ===== */
 .swatches { display: flex; gap: 7px; }
-.sw-chip { width: 26px; height: 26px; border-radius: 7px; border: 2px solid transparent; cursor: pointer; padding: 0; box-shadow: inset 0 0 0 1px var(--sw-inset, rgba(255,255,255,.14)); transition: transform .08s ease; }
+.sw-chip { width: 26px; height: 26px; border-radius: 7px; border: 2px solid transparent; cursor: pointer; padding: 0; background: var(--sw); box-shadow: inset 0 0 0 1px var(--sw-inset, rgba(255,255,255,.14)); transition: transform .08s ease; }
+/* a shortcut with no keys yet: its colour as an outline only */
+.sw-chip.empty { background: transparent; box-shadow: inset 0 0 0 2px var(--sw); }
 .sw-chip:hover { transform: translateY(-1px); }
 .sw-chip.on { border-color: var(--sw-on, #f4f6f4); box-shadow: inset 0 0 0 1px rgba(0,0,0,.35); }
+.sw-chip.on.empty { box-shadow: inset 0 0 0 2px var(--sw); }
+/* above a swatch, on hover or focus: edit its colour, clear its shortcut (while it has keys) */
+.sw { position: relative; display: flex; }
+.sw-tools {
+  position: absolute; bottom: calc(100% + 4px); left: 50%; transform: translate(-50%, 3px);
+  display: flex; gap: 3px; opacity: 0; pointer-events: none; transition: opacity .12s ease, transform .12s ease;
+}
+.sw-tools button {
+  display: grid; place-items: center; width: 20px; height: 20px; padding: 0; border: 0; border-radius: 6px;
+  background: var(--field); color: var(--field-text); box-shadow: inset 0 0 0 1px var(--line); cursor: pointer;
+}
+.sw-tools .ic { width: 12px; height: 12px; }
+.sw-tools button:hover { color: var(--field-hover-text); background: var(--field-hover); }
+.sw-tools button[hidden] { display: none; }
+/* the gap between the tools and the swatch keeps the hover */
+.sw-tools::after { content: ''; position: absolute; left: 0; right: 0; top: 100%; height: 6px; }
+.sw:hover .sw-tools, .sw:focus-within .sw-tools { opacity: 1; pointer-events: auto; transform: translate(-50%, 0); }
+
+/* the colour picker (app.js openPicker): just above its swatch, placed by script */
+.picker {
+  position: fixed; z-index: 25; width: 236px; box-sizing: border-box;
+  display: flex; flex-direction: column; gap: 8px; padding: 8px;
+  background: var(--field); border: 1px solid var(--line); border-radius: 10px; box-shadow: 0 10px 30px rgba(0,0,0,.35);
+}
+.pk-sv {
+  position: relative; height: 80px; border-radius: 6px; cursor: crosshair; touch-action: none; outline: none;
+  background: linear-gradient(to top, #000, transparent), linear-gradient(to right, #fff, hsl(var(--h, 0) 100% 50%));
+}
+.pk-sv:focus-visible { box-shadow: 0 0 0 2px var(--accent); }
+.pk-dot {
+  position: absolute; left: calc(var(--s, 1) * 100%); top: calc((1 - var(--v, 1)) * 100%);
+  width: 12px; height: 12px; border-radius: 50%; transform: translate(-50%, -50%); pointer-events: none;
+  border: 2px solid #fff; box-shadow: 0 0 0 1px rgba(0,0,0,.45);
+}
+.pk-hue {
+  -webkit-appearance: none; appearance: none; width: 100%; height: 10px; margin: 0; border-radius: 5px; cursor: pointer;
+  background: linear-gradient(to right, #f00, #ff0, #0f0, #0ff, #00f, #f0f, #f00);
+}
+.pk-hue::-webkit-slider-thumb { -webkit-appearance: none; width: 14px; height: 14px; border-radius: 50%; background: hsl(var(--h, 0) 100% 50%); border: 2px solid #fff; box-shadow: 0 0 0 1px rgba(0,0,0,.45); }
+.pk-hue::-moz-range-thumb { width: 10px; height: 10px; border-radius: 50%; background: hsl(var(--h, 0) 100% 50%); border: 2px solid #fff; }
+.pk-row { display: flex; gap: 6px; }
+.pk-hex {
+  flex: 1; min-width: 0; height: 28px; padding: 0 8px; box-sizing: border-box; border-radius: 6px;
+  background: var(--canvas-bg); border: 1px solid var(--line); color: var(--text); font: 600 11.5px/1 var(--mono);
+}
+.pk-hex:focus { outline: none; border-color: var(--accent); }
+.pk-reset {
+  display: inline-flex; align-items: center; gap: 5px; height: 28px; padding: 0 8px; border: 0; border-radius: 6px;
+  background: none; color: var(--field-text); box-shadow: inset 0 0 0 1px var(--line); font: 600 11px/1 var(--mono); cursor: pointer;
+}
+.pk-reset:hover { color: var(--field-hover-text); background: var(--field-hover); }
+.pk-reset .ic { width: 12px; height: 12px; }
+.pk-reset[hidden] { display: none; }
 
 /* ===== transparent background: a checkerboard in the theme's tones ===== */
 .ksv-app .prev-card.is-trans, .opt-d.cv-trans, .opt-d .shot.is-trans, .opt-d .shot-fig.is-trans {
@@ -510,17 +583,17 @@ body { overflow: auto; }
 .small-screen { display: none; }
 @media (max-width: 767px) {
   .small-screen {
-    display: flex; align-items: center; gap: 12px; position: fixed; bottom: 0; left: 0; right: 0; z-index: 10;
-    padding: 12px 16px; background: #14161a; color: #e6eaef; border-top: 1px solid #23262d;
+    display: flex; align-items: center; gap: 12px; position: fixed; top: 0; left: 0; right: 0; z-index: 10;
+    padding: 12px 16px; background: #14161a; color: #e6eaef; border-bottom: 1px solid #23262d;
     font: 500 13px/1.4 'JetBrains Mono', ui-monospace, monospace;
   }
   .small-screen span { flex: 1; }
   .small-screen button { flex: none; display: grid; place-items: center; width: 32px; height: 32px; border: 0; border-radius: 8px; background: #23262d; color: inherit; font-size: 16px; cursor: pointer; }
 }
-/* narrower than the app (.opt-d min-width), the page scrolls sideways: the rail's toggle stays
-   in the screen's top-right corner, where it can always be reached */
+/* narrower than the app (.opt-d min-width), the page scrolls sideways: the rail stays open
+   and can't be folded (app.js NARROW) */
 @media (max-width: 1119px) {
-  .opt-d .rail-btn, .opt-d.rail-off .rail-btn { position: fixed; right: 0; z-index: 11; transition: none; }
+  .opt-d .rail-btn, .opt-d .hint-rail { display: none; }
 }
 
 /* ===== what went out, with the rail folded (app.js showShot): a thumbnail bottom right,

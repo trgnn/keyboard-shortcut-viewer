@@ -29,6 +29,7 @@
     left:  { d: 'M5.5 12L18 4.5v15z', fill: true },
     right: { d: 'M18.5 12L6 4.5v15z', fill: true },
     // UI chrome (buttons / links), not keys
+    edit:     { d: 'M4.5 19.5h3.75L19 8.75 15.25 5 4.5 15.75zM13.25 7l3.75 3.75' },
     reset:    { d: 'M4 12a8 8 0 1 0 2.34-5.66L4 8.5M4 4v4.5h4.5' },
     download: { d: 'M12 4v12M6.5 10.5L12 16l5.5-5.5M5 20h14' },
     external: { d: 'M7 17L17 7M9 7h8v8' },
@@ -282,7 +283,8 @@
     glow: 0.55,      // outer glow accent opacity: a classic glow that just bites the neighbours
     glowSize: 0.10,  // outer glow blur
     inner: 0.55,     // inner glow accent opacity
-    innerSize: 0.16  // inner glow blur
+    innerSize: 0.16, // inner glow blur
+    multi: 0.60      // a key in several shortcuts: each colour's opacity in its soft 135° gradient
   };
 
   /* ---- themes: everything the canvas and the exports paint, per theme ----
@@ -473,12 +475,14 @@
         const code = k && k.dataset.code;
         if (!code || (state.locked && state.locked.has(code))) return;
         const now = performance.now();
-        const upgrade = S.canDouble(code) && last && last.code === code && now - last.t < DOUBLE_MS && sig() === last.after;
+        // (state.doubleTap false: the page's double-tap option is off, a double-click is two clicks)
+        const dbl = state.doubleTap !== false && S.canDouble(code);
+        const upgrade = dbl && last && last.code === code && now - last.t < DOUBLE_MS && sig() === last.after;
         const before = upgrade ? last.before : snap();
         const next = S.select(Object.assign({}, state, before), code, { double: upgrade });
         state.sel = next.sel; state.dbl = next.dbl;
         onChange(); // the page repaints the keyboard in its refresh
-        last = S.canDouble(code) && !upgrade ? { code, before, t: now, after: sig() } : null;
+        last = dbl && !upgrade ? { code, before, t: now, after: sig() } : null;
       });
     }
 
@@ -494,14 +498,43 @@
 
   // keys that can't be added (locked by the hyperkey, or over the modifier limit) are
   // greyed out — in the selector, the preview and the export alike
+  /* ---- several shortcuts at once: layers ----
+     state.layers (optional): one shortcut per accent colour, [{ color, sel, dbl }], and
+     state.active, the one being edited: its selection is state.sel / state.dbl (the page
+     keeps the others in their layer). Without layers (or with state.multi false), state is one
+     shortcut, drawn in the accent. A key in several shortcuts shows all their colours, in a
+     soft gradient. */
+  function layersOf(state) {
+    if (!state.layers || state.multi === false) return [{ color: null, st: state }];
+    return state.layers.map((l, i) => ({ color: l.color, st: i === state.active ? state : Object.assign({}, state, { sel: l.sel, dbl: l.dbl }) }));
+  }
+  // a key's look: on (in any shortcut), its colour or colours (in layer order; `fallback`
+  // without layers), double-tapped or not, and its badge's colour (the first shortcut that
+  // double-taps it; `fallback` without layers)
+  function keyPaint(state, code, fallback) {
+    const hits = layersOf(state).filter((l) => isOn(l.st, code));
+    const colors = hits.map((l) => l.color || fallback), d = hits.find((l) => isDbl(l.st, code));
+    return { on: hits.length > 0, accent: colors.length > 1 ? colors : colors[0] || fallback, dbl: !!d, badge: d ? d.color || fallback : null };
+  }
+  // the keycaps: one row per shortcut that has keys, each in its colour
+  function capsRows(state) {
+    return layersOf(state).map((l) => ({ color: l.color, list: caps(l.st) })).filter((r) => r.list.length);
+  }
+
   function paint(kb, state) {
     kb.querySelectorAll('.ksv-key').forEach(k => {
       const code = k.dataset.code;
       if (!code) return;
-      const on = isOn(state, code);
+      const kp = keyPaint(state, code, null), on = kp.on, multi = Array.isArray(kp.accent);
       k.classList.toggle('on', on);
       k.setAttribute('aria-pressed', on);
-      k.classList.toggle('dbl', on && isDbl(state, code));
+      // its shortcuts' colours (styles.css .on, .on.multi, .dbl): the page's accent otherwise
+      const set = (v, val) => (val ? k.style.setProperty(v, val) : k.style.removeProperty(v));
+      set('--accent', multi ? mixHex(kp.accent) : kp.accent);
+      set('--multi', multi && 'linear-gradient(135deg, ' + kp.accent.map((c) => hexA(c, ONSTATE.multi)).join(', ') + ')');
+      k.classList.toggle('multi', multi);
+      set('--badge', kp.badge); set('--badge-fg', kp.badge && onColor(kp.badge));
+      k.classList.toggle('dbl', kp.dbl);
       k.classList.toggle('locked', !!(state.locked && state.locked.has(code)));
       k.classList.toggle('maxed', S.maxed(state, code));
     });
@@ -553,7 +586,7 @@
   // sizes of the keycaps row, in base units; opts.capsSpec overrides any of them (the specimen
   // page's sliders use it to try values): margin, key height, space around a "+", its box and
   // font size
-  const CAPS = { pad: 44, keyH: 92, gap: 14, plus: 22, plusSize: 34 };
+  const CAPS = { pad: 44, keyH: 92, gap: 14, plus: 22, plusSize: 34, rowGap: 28 };
   const capsSpec = (opts) => Object.assign({}, CAPS, (opts && opts.capsSpec) || {});
   // the "+": 'all' between every two keys, 'key' before each trigger (activation) key (none
   // between the modifiers),
@@ -563,38 +596,47 @@
   const glowMode = (opts) => GLOW.includes(opts.capsGlow) ? opts.capsGlow : 'mods';
   // is there a "+" between list[i - 1] and list[i]?
   const plusBefore = (list, i, mode) => mode === 'all' || (mode === 'key' && !list[i].mod);
-  function capsDims(list, opts, scale) {
+  // rows: capsRows() (a single caps() list counts as one row); each row is laid out on its own
+  // line, left-aligned, CAPS.rowGap apart
+  function capsDims(rows, opts, scale) {
+    if (rows.length && rows[0].code) rows = [{ list: rows }];
     const C = capsSpec(opts), mode = plusMode(opts);
     const h = C.keyH, bd = boardDims(1), k = h / bd.keyH, colW = bd.colW * k, g = BOARD.g * k;
-    const widths = list.map((c) => c.span * colW + (c.span - 1) * g);
-    // the space before each key: none for the first, a "+" box or a plain gap for the others
-    const seps = list.map((c, i) => !i ? 0 : plusBefore(list, i, mode) ? 2 * C.gap + C.plus : C.gap);
-    const cw = widths.reduce((a, b) => a + b, 0) + seps.reduce((a, b) => a + b, 0);
-    const W = cw + 2 * C.pad, H = h + 2 * C.pad;
-    return { widths, seps, W, H, cw, ch: h, keyH: h, even: true, pad: C.pad, spec: C, plus: mode, glow: glowMode(opts),
+    const lines = rows.map(({ list }) => {
+      const widths = list.map((c) => c.span * colW + (c.span - 1) * g);
+      // the space before each key: none for the first, a "+" box or a plain gap for the others
+      const seps = list.map((c, i) => !i ? 0 : plusBefore(list, i, mode) ? 2 * C.gap + C.plus : C.gap);
+      return { widths, seps, cw: widths.reduce((a, b) => a + b, 0) + seps.reduce((a, b) => a + b, 0) };
+    });
+    const cw = Math.max(0, ...lines.map((l) => l.cw)), ch = rows.length * h + (rows.length - 1) * C.rowGap;
+    const W = cw + 2 * C.pad, H = ch + 2 * C.pad;
+    return { rows, lines, W, H, cw, ch, keyH: h, even: true, pad: C.pad, spec: C, plus: mode, glow: glowMode(opts),
       r: h * KEYSPEC.radius, w: Math.round(W * scale), h: Math.round(H * scale) };
   }
   // output pixel dimensions for the current selection at a scale (1 = base @1x)
   function exportSize(state, scale, opts) {
-    const list = caps(state);
-    if (!list.length) return null;
-    const d = capsDims(list, opts || {}, scale || 1);
-    return { w: d.w, h: d.h, keys: list.length };
+    const rows = capsRows(state);
+    if (!rows.length) return null;
+    const d = capsDims(rows, opts || {}, scale || 1);
+    return { w: d.w, h: d.h, keys: rows.reduce((t, r) => t + r.list.length, 0) };
   }
-  function drawCaps(p, list, opts, d, bg) {
+  function drawCaps(p, d, opts, bg) {
     const accent = opts.accent || opts.hyper || '#22d3ee';
     drawCanvas(p, opts, d, bg);
-    let x = d.pad;
-    const y = d.pad;
-    list.forEach((c, i) => {
-      if (i) {
-        if (plusBefore(list, i, d.plus)) p.text('+', x + d.spec.gap + d.spec.plus / 2, y + d.keyH / 2, { size: d.spec.plusSize, weight: 600, color: opts.plus || '#5a616b' });
-        x += d.seps[i];
-      }
-      const w = d.widths[i];
-      const lit = d.glow === 'all' || (d.glow === 'mods' && c.mod) || (d.glow === 'key' && !c.mod);
-      drawKeyFace(p, c.code, x, y, w, d.keyH, d.r, lit, opts, accent, { hyper: c.hyper, dbl: c.dbl, bg, kb: c.kb });
-      x += w;
+    d.rows.forEach(({ list, color }, ri) => {
+      const line = d.lines[ri], y = d.pad + ri * (d.keyH + d.spec.rowGap), col = color || accent;
+      let x = d.pad;
+      list.forEach((c, i) => {
+        if (i) {
+          if (plusBefore(list, i, d.plus)) p.text('+', x + d.spec.gap + d.spec.plus / 2, y + d.keyH / 2, { size: d.spec.plusSize, weight: 600, color: opts.plus || '#5a616b' });
+          x += line.seps[i];
+        }
+        const w = line.widths[i];
+        const lit = d.glow === 'all' || (d.glow === 'mods' && c.mod) || (d.glow === 'key' && !c.mod);
+        drawKeyFace(p, c.code, x, y, w, d.keyH, d.r, lit, opts, col,
+          { hyper: c.hyper, dbl: c.dbl, bg, kb: c.kb, badgeFg: color ? onColor(color) : null });
+        x += w;
+      });
     });
   }
 
@@ -608,22 +650,22 @@
 
   // keycap image — png / jpg / webp (canvas, at opts.scale) or svg (vector, always transparent)
   function capsImage(state, opts) {
-    const list = caps(state);
-    if (!list.length) return null;
+    const rows = capsRows(state);
+    if (!rows.length) return null;
     const fmt = opts.format || 'png', vector = fmt === 'svg', scale = vector ? 1 : (opts.scale || 2);
-    const d = capsDims(list, opts, scale);
-    const name = exportName('keycaps', list, opts.bgName) + '.' + fmt;
+    const d = capsDims(rows, opts, scale);
+    const name = exportName('keycaps', rows.map((r) => r.list), opts.bgName) + '.' + fmt;
     const bg = (vector || opts.bg === 'transparent')
       ? (fmt === 'jpg' ? (opts.jpgBg || '#0a0b0d') : null)
       : (opts.bg || '#0a0b0d');
     if (vector) {
       const p = svgPainter();
-      drawCaps(p, list, opts, d, bg);
+      drawCaps(p, d, opts, bg);
       return { name, svg: p.svg(d.W, d.H) };
     }
     const cv = document.createElement('canvas'); cv.width = d.w; cv.height = d.h;
     const ctx = cv.getContext('2d'); ctx.scale(scale, scale);
-    drawCaps(canvasPainter(ctx, scale), list, opts, d, bg);
+    drawCaps(canvasPainter(ctx, scale), d, opts, bg);
     return { name, canvas: cv, fmt };
   }
 
@@ -684,13 +726,13 @@
   };
   // build a descriptive export filename (no extension):
   // KSV-<layout>-<background>_<shortcut>  e.g. "KSV-keycaps-dark_cmd-k"
-  function exportName(layout, list, bgName) {
+  // lists: one caps() list per shortcut, each after its own "_"
+  function exportName(layout, lists, bgName) {
     const head = ['KSV', layout === 'board' ? 'keyboard' : 'keycaps'];
     if (bgName) head.push(bgName);
     // a key by what it reads in its layout (AZERTY's `q` is "a"), by its code otherwise
     const slug = (c) => c.label && /^[a-z0-9]$/i.test(c.label) ? c.label.toLowerCase() : SLUG[c.label] || SLUG[c.code] || c.code;
-    const shortcut = (list && list.length) ? list.map(slug).join('-') : '';
-    return head.join('-') + (shortcut ? '_' + shortcut : '');
+    return head.join('-') + (lists || []).filter((l) => l.length).map((l) => '_' + l.map(slug).join('-')).join('');
   }
 
   /* ---- full-keyboard export ("key press on the actual layout") ---- */
@@ -731,6 +773,21 @@
   function boardSize(scale) { const d = boardDims(scale || 1); return { w: d.w, h: d.h, keys: 0 }; }
 
   // #rrggbb at a given alpha → rgba() string (mirrors CSS color-mix(accent X%, transparent))
+  // the average of several #rrggbb colours (a shared key's glow and wash)
+  function mixHex(list) {
+    const n = list.map((h) => parseInt(h.replace('#', ''), 16));
+    const avg = (sh) => Math.round(n.reduce((t, v) => t + (v >> sh & 255), 0) / n.length);
+    return '#' + [16, 8, 0].map((sh) => avg(sh).toString(16).padStart(2, '0')).join('');
+  }
+  // legible text on a colour, by real (WCAG) contrast: near-black or white
+  function onColor(hex) {
+    const m = /^#?([0-9a-f]{6})$/i.exec((hex || '').trim());
+    if (!m) return '#0a0b0d';
+    const n = parseInt(m[1], 16);
+    const lin = (v) => { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); };
+    const L = 0.2126 * lin(n >> 16 & 255) + 0.7152 * lin(n >> 8 & 255) + 0.0722 * lin(n & 255);
+    return (L + 0.05) / 0.05 >= 1.05 / (L + 0.05) ? '#0a0b0d' : '#ffffff';
+  }
   function hexA(hex, a) {
     const m = /^#?([0-9a-f]{6})$/i.exec((hex || '').trim());
     if (!m) return hex;
@@ -908,18 +965,22 @@
   // selector / preview .on state.
   // iso (the ISO return): { h: its full height over two rows, nw / nh: the corner it leaves
   // free }; h stays one key's height, which sizes the glows
+  // accent: a colour, or several (a key in several shortcuts): then the gradient runs through
+  // them all, softly, and the wash and glows take their average (the page: .on.multi)
   function boardSurface(p, x, y, w, h, r, on, opts, accent, iso) {
     const H = iso ? iso.h : h, notch = iso ? { w: iso.nw, h: iso.nh } : null;
     const base = opts.keyBg || '#131519';
     if (on) {
-      const O = ONSTATE;
+      const O = ONSTATE, multi = Array.isArray(accent), mid = multi ? mixHex(accent) : accent;
       // 135°-equivalent accent gradient; used for both the fill and the ring,
       // mirroring the DOM border-box layer
-      const grad = { x1: x, y1: y, x2: x + w, y2: y + H, stops: [[0, hexA(accent, O.ringFrom)], [O.ringStop, hexA(accent, O.ringTo)]] };
+      const stops = multi ? accent.map((c, i) => [i / (accent.length - 1), hexA(c, O.multi)])
+        : [[0, hexA(accent, O.ringFrom)], [O.ringStop, hexA(accent, O.ringTo)]];
+      const grad = { x1: x, y1: y, x2: x + w, y2: y + H, stops };
       p.rrect(x, y, w, H, r, {
-        notch, fills: [base, grad, hexA(accent, O.fill)],
-        stroke: grad, lw: 1.5, glow: { color: hexA(accent, O.glow), blur: h * O.glowSize },
-        inner: { color: hexA(accent, O.inner), blur: h * O.innerSize }
+        notch, fills: [base, grad, hexA(mid, O.fill)],
+        stroke: grad, lw: 1.5, glow: { color: hexA(mid, O.glow), blur: h * O.glowSize },
+        inner: { color: hexA(mid, O.inner), blur: h * O.innerSize }
       });
     } else {
       p.rrect(x, y, w, H, r, { notch, fills: [base], stroke: opts.keyBorder || 'rgba(255,255,255,.08)', lw: 1 });
@@ -969,7 +1030,7 @@
     const vector = fmt === 'svg';
     const scale = vector ? 1 : (opts.scale || 2);
     const d = boardDims(scale);
-    const name = exportName('board', caps(state), opts.bgName) + '.' + fmt;
+    const name = exportName('board', capsRows(state).map((r) => r.list), opts.bgName) + '.' + fmt;
     // jpg can't be transparent — fall back to the bg colour (or dark)
     const bg = (vector || opts.bg === 'transparent')
       ? (fmt === 'jpg' ? (opts.jpgBg || '#0a0b0d') : null)
@@ -1021,14 +1082,16 @@
   }
 
   // the double-tap badge, on a key's top-right corner
-  function drawBadge(p, right, top, keyH, accent, bg, opts) {
+  // (fg: its digit's colour, when the badge isn't the accent's: a shortcut's own colour)
+  function drawBadge(p, right, top, keyH, accent, bg, opts, fg) {
     const br = keyH * 0.16, bx = right - br * 0.6, by = top + br * 0.6;
     p.circle(bx, by, br, { fill: accent, stroke: bg || opts.badgeRing || '#0a0b0d', lw: 1.5 });
-    p.text('2', bx, by + 0.5, { size: br * 1.1, weight: 700, color: opts.hyperFg || '#0a0b0d' });
+    p.text('2', bx, by + 0.5, { size: br * 1.1, weight: 700, color: fg || opts.hyperFg || '#0a0b0d' });
   }
   // one key as it looks in the keyboard, at any size: surface, labels and double-tap badge.
-  // f: { kb (the layout), hyper (caps shows the hyperkey), dbl, bg (for the badge's ring),
-  // iso (the ISO return's L, in the keyboard export: see boardSurface) }
+  // f: { kb (the layout), hyper (caps shows the hyperkey), dbl, badge / badgeFg (its colours,
+  // when not the accent's), bg (for the badge's ring), iso (the ISO return's L, in the keyboard
+  // export: see boardSurface) }
   function drawKeyFace(p, code, x, y, w, keyH, r, isSel, opts, accent, f) {
     const c = layout(f.kb).cell[code] || { label: code.toUpperCase(), span: 4 }, keyFg = opts.fg || '#d7dbe0';
     if (c.esc) {
@@ -1068,15 +1131,21 @@
     } else {
       bkey(p, x, y, w, keyH, r, isSel, opts, accent, c.label, keyH * KEYSPEC.letter);
     }
-    if (f.dbl) drawBadge(p, x + w, y, keyH, accent, f.bg, opts);
+    if (f.dbl) drawBadge(p, x + w, y, keyH, f.badge || accent, f.bg, opts, f.badgeFg);
   }
 
   // the keyboard itself, in base units, through a painter
   function drawBoard(p, state, opts, d, bg) {
     const b = BOARD;
-    const sel = state.sel, on = (c) => isOn(state, c);
     const keyH = d.keyH, colW = d.colW, r = d.r;
     const accent = opts.accent || opts.hyper || '#22d3ee', L = layout(layoutId(state));
+    // each key in the colours of the shortcuts it's in (keyPaint)
+    const kp = (c) => keyPaint(state, c, accent);
+    const face = (c, x, y, w, f) => {
+      const k = kp(c);
+      drawKeyFace(p, c, x, y, w, keyH, r, k.on, opts, k.accent,
+        Object.assign({ kb: L.id, dbl: k.dbl, badge: k.badge, badgeFg: state.layers && k.badge ? onColor(k.badge) : null }, f));
+    };
     drawCanvas(p, opts, d, bg);
 
     // function row — esc (wide) + F1..F12 (square) + a blank Touch ID square at the far right
@@ -1085,7 +1154,7 @@
     const sqW = 4 * colW + 3 * b.g; // square key width = keyH (one letter unit)
     FN.forEach((c) => {
       const w = c === 'esc' ? 6 * colW + 5 * b.g : sqW;
-      drawKeyFace(p, c, fx, y, w, keyH, r, sel.has(c), opts, accent, { kb: L.id });
+      face(c, fx, y, w, { dbl: false });
       fx += w + b.g;
     });
     // Touch ID — blank, deactivated-looking key with a faint sensor ring (none on a PC)
@@ -1105,10 +1174,11 @@
           // the arrow cluster's gap is half the key gap (as in the page: .ksv-arrows)
           const ag = b.g / 2, colw = (w - 2 * ag) / 3, cellH = (keyH - ag) / 2;
           const ar = keyH * KEYSPEC.radius * 0.6, af = keyH * KEYSPEC.sub;
-          barrow(p, x + colw + ag, y, colw, cellH, ar, on('up'), opts, accent, 'up', af);
-          barrow(p, x, y + cellH + ag, colw, cellH, ar, on('left'), opts, accent, 'left', af);
-          barrow(p, x + colw + ag, y + cellH + ag, colw, cellH, ar, on('down'), opts, accent, 'down', af);
-          barrow(p, x + 2 * (colw + ag), y + cellH + ag, colw, cellH, ar, on('right'), opts, accent, 'right', af);
+          const arrow = (c, ax, ay) => { const k = kp(c); barrow(p, ax, ay, colw, cellH, ar, k.on, opts, k.accent, c, af); };
+          arrow('up', x + colw + ag, y);
+          arrow('left', x, y + cellH + ag);
+          arrow('down', x + colw + ag, y + cellH + ag);
+          arrow('right', x + 2 * (colw + ag), y + cellH + ag);
           x += w + b.g; return;
         }
         // the ISO return's foot: drawn with the return, a row up
@@ -1116,15 +1186,14 @@
         const iso = cls && /\biso-ret\b/.test(cls) ? { h: 2 * keyH + b.rowGap, nw: colW + b.g, nh: keyH + b.rowGap } : null;
         // greyed out as on screen: locked by the hyperkey or over the modifier limit
         const grey = (state.locked && state.locked.has(code)) || S.maxed(state, code);
-        p.group(grey ? 0.28 : 1, () => drawKeyFace(p, code, x, y, w, keyH, r, on(code), opts, accent,
-          { kb: L.id, hyper: state.hyper, dbl: isDbl(state, code), bg, iso }));
+        p.group(grey ? 0.28 : 1, () => face(code, x, y, w, { hyper: state.hyper, bg, iso }));
         x += w + b.g;
       });
       y += keyH + b.rowGap;
     });
   }
 
-  window.KSV = { KBS, LOOKS, SUPERS, hasKey: (kb, c) => layout(kb).has(c), buildKeyboard, buildBoardPreview, caps, render: image, exportImage, copyImage, exportSize, boardSize, boardDims, CAPS, frameRect, gridOrigin, BOARD, FRAME, GRID, THEMES, ink, canEncode, paint, icon, el, HYPER, KEYBG, COLS };
+  window.KSV = { KBS, LOOKS, SUPERS, onColor, hasKey: (kb, c) => layout(kb).has(c), buildKeyboard, buildBoardPreview, caps, render: image, exportImage, copyImage, exportSize, boardSize, boardDims, CAPS, frameRect, gridOrigin, BOARD, FRAME, GRID, THEMES, ink, canEncode, paint, icon, el, HYPER, KEYBG, COLS };
   // a rounded rect as a sub-path of a Path2D (for the even-odd glow clip)
   function rrPath(p, x, y, w, h, r) {
     p.moveTo(x + r, y); p.arcTo(x + w, y, x + w, y + h, r); p.arcTo(x + w, y + h, x, y + h, r);

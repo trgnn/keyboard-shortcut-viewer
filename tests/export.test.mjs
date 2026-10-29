@@ -42,6 +42,16 @@ const CASES = {
   'keycaps-mac-fr-cmd-a-1': [state(['cmd', 'q', '1'], { kb: 'mac-fr', combo: true }), { layout: 'keycaps' }],
 };
 
+// several shortcuts at once: one layer per colour, the active one in sel / dbl (KSV layersOf)
+const layered = (lists, extra = {}) => {
+  const colors = ['#22d3ee', '#ff7a1a', '#9d4bff', '#ff3d8b', '#b7ff4a'];
+  const layers = colors.map((color, i) => ({ color, sel: new Set((lists[i] || [])[0] || []), dbl: new Set((lists[i] || [])[1] || []) }));
+  return state([], { layers, active: 0, sel: layers[0].sel, dbl: layers[0].dbl, ...extra });
+};
+// cmd in three shortcuts (a soft three-colour gradient), a double-tapped c in orange
+CASES['board-layers-shared-cmd'] = [layered([[['cmd', 'k']], [['cmd', 'c'], ['c']], [['ctrl', 'cmd', 'z']]]), { layout: 'board' }];
+CASES['keycaps-layers-three-rows'] = [layered([[['cmd', 'k']], [['cmd', 'c'], ['c']], [['ctrl', 'cmd', 'z']]]), { layout: 'keycaps' }];
+
 for (const [name, [st, opts]] of Object.entries(CASES)) {
   test(name, () => {
     const out = KSV.render(st, { ...base, ...opts });
@@ -57,6 +67,11 @@ test("a MacBook's modifiers read as printed by default", () => {
   const st = (look) => ({ sel: new Set(['cmd', 'k']), dbl: new Set(), lr: false, hyper: false, locked: new Set(), look });
   assert.equal(KSV.render(st(undefined), { ...base, layout: 'board' }).svg, KSV.render(st('printed'), { ...base, layout: 'board' }).svg);
   assert.notEqual(KSV.render(st('custom'), { ...base, layout: 'board' }).svg, KSV.render(st('printed'), { ...base, layout: 'board' }).svg);
+});
+
+test('one filename part per shortcut, empty ones left out', () => {
+  const st = layered([[['cmd', 'k']], [], [['ctrl', '/']]]);
+  assert.equal(KSV.render(st, { ...base, layout: 'keycaps' }).name, 'KSV-keycaps-alpha_cmd-k_ctrl-slash.svg');
 });
 
 test('export names spell out symbol keys', () => {
