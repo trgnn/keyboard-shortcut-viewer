@@ -30,6 +30,11 @@
 <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
+<!-- small screens only (styles.css): the app is desktop-sized and scrolls sideways -->
+<div class="small-screen" role="note">
+  <span>Built for a desktop screen: here the keyboard scrolls sideways.</span>
+  <button id="smallScreenClose" aria-label="dismiss"><i data-icon="cross"></i></button>
+</div>
 <div id="app" class="ksv-app opt-d">
   <div class="frame-grid"></div>
   <div class="grid-lit"></div>
@@ -64,7 +69,7 @@
     </div>
 
     <footer class="d-footer">
-      <span class="cf-meta"><span class="cf-ver"></span><span class="cf-text">A clean visual for any shortcut on MacBook, because I needed one for a blog article.</span></span>
+      <span class="cf-meta"><span class="ver-menu" hidden><button class="cf-ver" id="verBtn" aria-haspopup="menu" aria-expanded="false" aria-controls="verList"></button><span class="ver-list" id="verList" role="menu" hidden></span></span><span class="cf-text">A clean visual for any shortcut on MacBook, because I needed one for a blog article.</span></span>
       <a class="cf-link" href="https://trognon.space" target="_blank" rel="noopener noreferrer">trognon.space<i data-icon="external"></i></a>
     </footer>
   </div>
@@ -77,27 +82,35 @@
       </section>
 
       <section class="grp">
-        <div class="grp-h">output</div>
-        <div class="seg wide" id="extSeg"></div>
-        <div class="seg wide" id="bgSeg"></div>
+        <div class="grp-h">style</div>
         <div class="opt-row">
-          <span class="kbc-l">unavailable</span>
-          <div class="seg" id="dimSeg"></div>
+          <span class="kbc-l">theme</span>
+          <div class="seg" id="themeSeg"></div>
         </div>
-        <div class="scale-row">
-          <span class="kbc-l">scale</span>
-          <input type="range" id="scaleRange" aria-label="export scale" />
-          <span class="cap" id="scaleVal">2×</span>
+        <div class="opt-row">
+          <span class="kbc-l" title="background">bg</span>
+          <div class="seg" id="bgSeg"></div>
+        </div>
+        <div class="opt-row">
+          <span class="kbc-l">surface</span>
+          <div class="seg" id="surfaceSeg"></div>
+        </div>
+        <div class="opt-row">
+          <span class="kbc-l">show</span>
+          <div class="pills" id="showSeg"></div>
         </div>
       </section>
     </div>
 
+    <!-- output: what gets written (format, resolution), right above what it looks like -->
     <div class="rail-prev">
-      <div class="fl-row">
-        <span class="rlbl" id="previewLbl">// preview png</span>
-        <span class="cap" id="sizeCap">—</span>
+      <div class="seg wide" id="extSeg"></div>
+      <div class="scale-row">
+        <span class="kbc-l">scale</span>
+        <input type="range" id="scaleRange" aria-label="export scale" />
+        <span class="readout" id="scaleVal"></span>
       </div>
-      <div class="prev-card bg-dark" id="preview"></div>
+      <div class="prev-card" id="preview"></div>
     </div>
 
     <div class="rail-foot">

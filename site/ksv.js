@@ -1,5 +1,5 @@
 /* Keyboard Shortcut Viewer — shared data, render, interaction, export.
-   Exposes window.KSV. Each app instance calls KSV.mount(rootEl, opts). */
+   Exposes window.KSV; app.js builds the page with it (KSV.buildKeyboard, KSV.exportImage…). */
 (function () {
   /* ---- glyphs: SVG paths on a 24-unit box, so they look the same on every OS ----
      Unicode glyphs (⌘ ⌥ ⇧ ▲ …) render from whatever font the system falls back to,
@@ -29,6 +29,7 @@
     external: { d: 'M7 17L17 7M9 7h8v8' },
     copy:     { d: 'M9 9h10.5v10.5H9zM15 9V4.5H4.5V15H9' },
     check:    { d: 'M5 12.5l4.5 4.5L19 7.5' },
+    chevron:  { d: 'M7 14l5-5 5 5' },
     cross:    { d: 'M6.5 6.5l11 11M17.5 6.5l-11 11' }
   };
   const iconPaint = (I) => I.fill
@@ -101,7 +102,7 @@
     const x0 = align === 'left' ? x : align === 'right' ? x - width : x - width / 2;
     return '<g transform="translate(' + x0 + ' ' + (y + baselineShift(weight) * t.size) + ') scale(' + k + ')"' + fill + '>' + glyphs.join('') + '</g>';
   }
-  // keyboard grid width in columns \u2014 one source for the layout, the export, and app.js sizing
+  // keyboard grid width in columns — one source for the layout (applySpec sets --cols), the export, and app.js sizing
   const COLS = 58;
   // The hyperkey: Caps Lock remapped to Control+Option+Command. (mods, no shift)
   const HYPER = ['ctrl', 'opt', 'cmd'];
@@ -172,22 +173,59 @@
      `ringStop` (gradient position). The glow's *geometry* stays per-surface (the
      selector tracks the cursor, the preview/export are static) but its opacity is
      shared via `glow`. */
+  // neon: a hot top-left corner falling off fast, a darker body so the edge pops, a
+  // stronger outer glow and an inner glow along the edge. Glow sizes are fractions of keyH.
   const ONSTATE = {
-    fill: 0.26,      // flat accent wash over the whole key
-    ringFrom: 0.72,  // 135° ring/edge gradient — bright corner (top-left)
-    ringTo: 0.16,    //                          — dim corner (bottom-right)
-    ringStop: 0.75,  // position of the dim stop
-    glow: 0.50       // glow accent opacity
+    fill: 0.14,      // flat accent wash over the whole key
+    ringFrom: 1.00,  // 135° ring/edge gradient — bright corner (top-left)
+    ringTo: 0.10,    //                          — dim corner (bottom-right)
+    ringStop: 0.50,  // position of the dim stop (shorter = sharper peak)
+    glow: 0.55,      // outer glow accent opacity: a classic glow that just bites the neighbours
+    glowSize: 0.10,  // outer glow blur
+    inner: 0.55,     // inner glow accent opacity
+    innerSize: 0.16  // inner glow blur
   };
 
-  // solid key surface colour. The live selector uses a translucent --keyBg (frosted
-  // over the panel), but the flat export and its preview both want this solid value —
-  // shared here so the two can't drift (applySpec hands it to the preview; the export
-  // pulls it into EXPORT_BG in app.js).
-  const KEYBG = '#131519';
+  /* ---- themes: everything the canvas and the exports paint, per theme ----
+     One table for the page (app.js turns it into CSS variables), the export preview and
+     every exporter, so a dark or light keyboard looks the same on screen and in the file.
+     - bg / check / checkBase: canvas fill, and the checkerboard shown for a transparent export
+     - grid: the background grid's hairline
+     - key / frame: surfaces, `solid` or `translucent` (the page's frosted levels: a
+       transparent export lets the background through); frame.stroke is the case's hairline
+     - keyBorder: a key's hairline in the export; keyLine: the same in the page (opaque)
+     - keyFg: labels; plus / sub: keycap separators and sub-labels
+     - ink: how far accent-coloured glyphs and text move toward black to stay legible
+       (0 on dark; on light, a lime or cyan accent would vanish otherwise) — see ink() */
+  const THEMES = {
+    dark: {
+      bg: '#0a0b0d', checkBase: '#0c0d10', check: 'rgba(255,255,255,.07)', grid: 'rgba(255,255,255,.02)',
+      key: { solid: '#131519', translucent: 'rgba(19,21,25,0.6)' },
+      frame: { solid: '#0b0d0f', translucent: 'rgba(13,15,18,0.4)', stroke: '#1d2026' },
+      keyBorder: 'rgba(255,255,255,.08)', keyLine: '#23262d', keyFg: '#d7dbe0',
+      plus: '#5a616b', sub: '#8b93a1', ink: 0
+    },
+    light: {
+      bg: '#eef0f3', checkBase: '#f7f8fa', check: 'rgba(10,11,13,.05)', grid: 'rgba(10,11,13,.06)',
+      key: { solid: '#ffffff', translucent: 'rgba(255,255,255,0.7)' },
+      frame: { solid: '#dde0e6', translucent: 'rgba(205,210,218,0.45)', stroke: '#cfd3da' },
+      keyBorder: 'rgba(10,11,13,.12)', keyLine: '#d3d7de', keyFg: '#1d2025',
+      plus: '#9aa0aa', sub: '#6b7280', ink: 0.35
+    }
+  };
+  const KEYBG = THEMES.dark.key.solid;
+  // an accent colour as drawn on a theme: mixed toward near-black by theme.ink
+  function ink(hex, theme) {
+    const t = (THEMES[theme] || THEMES.dark).ink, m = /^#?([0-9a-f]{6})$/i.exec(hex || '');
+    if (!t || !m) return hex;
+    const n = parseInt(m[1], 16), mix = (v, to) => Math.round(v + (to - v) * t);
+    const c = [mix(n >> 16 & 255, 10), mix(n >> 8 & 255, 11), mix(n & 255, 13)];
+    return '#' + c.map((v) => v.toString(16).padStart(2, '0')).join('');
+  }
 
   // push the shared specs onto an element as CSS custom properties the stylesheet reads
-  function applySpec(elm, isStatic) {
+  function applySpec(elm, isStatic, keyBg) {
+    elm.style.setProperty('--cols', COLS);
     const S = KEYSPEC, f = isStatic ? { letter: 0, fnKey: 0, glyph: 0, sub: 0 } : S.floor;
     elm.style.setProperty('--r-radius', S.radius);
     elm.style.setProperty('--r-letter', S.letter);
@@ -206,9 +244,11 @@
     elm.style.setProperty('--on-ring-to', O.ringTo);
     elm.style.setProperty('--on-ring-stop', (O.ringStop * 100) + '%');
     elm.style.setProperty('--on-glow', O.glow);
-    // the preview is a proxy for the flat export, so it uses the solid key surface
-    // (the interactive selector keeps the app's translucent --keyBg)
-    if (isStatic) elm.style.setProperty('--keyBg', KEYBG);
+    elm.style.setProperty('--on-glow-size', O.glowSize);
+    elm.style.setProperty('--on-inner', O.inner);
+    elm.style.setProperty('--on-inner-size', O.innerSize);
+    // initial key surface (the page restyles the selector per theme; the preview passes the export's)
+    elm.style.setProperty('--keyBg', keyBg || (isStatic ? THEMES.dark.key.solid : THEMES.dark.key.translucent));
   }
 
   const el = (tag, cls, html) => { const n = document.createElement(tag); if (cls) n.className = cls; if (html != null) n.innerHTML = html; return n; };
@@ -216,9 +256,9 @@
   function buildKeyboard(state, onChange, kopts) {
     kopts = kopts || {};
     const kb = el('div', 'ksv-kb' + (kopts.static ? ' ksv-static' : ''));
-    applySpec(kb, !!kopts.static);
+    applySpec(kb, !!kopts.static, kopts.keyBg);
 
-    // function row — esc (wide) + F1..F12 (square, like the letter keys) on the 60-col grid,
+    // function row — esc (wide) + F1..F12 (square, like the letter keys) on the COLS grid,
     // with a blank Touch ID cell at the far right
     const fnRow = el('div', 'ksv-fnrow');
     FN.forEach((c, i) => {
@@ -279,24 +319,24 @@
         const before = upgrade ? last.before : snap();
         const next = S.select(Object.assign({}, state, before), code, { double: upgrade });
         state.sel = next.sel; state.dbl = next.dbl;
-        paint(kb, state); onChange();
+        onChange(); // the page repaints the keyboard in its refresh
         last = DBLABLE.has(code) && !upgrade ? { code, before, t: now, after: sig() } : null;
       });
     }
 
-    paint(kb, state, kopts.dim);
+    paint(kb, state);
     return kb;
   }
 
-  // non-interactive keyboard for export previews; opts.dim mirrors the export option
+  // non-interactive keyboard for export previews; opts.keyBg is the export's key surface
   function buildBoardPreview(state, opts) {
-    return buildKeyboard(state, () => {}, { static: true, dim: !opts || opts.dim !== false });
+    opts = opts || {};
+    return buildKeyboard(state, () => {}, { static: true, keyBg: opts.keyBg });
   }
 
-  // dim = grey out the keys that can't be added (locked by the hyperkey, or over the
-  // modifier limit). Always on in the selector; the export preview follows the export option.
-  function paint(kb, state, dim) {
-    dim = dim !== false;
+  // keys that can't be added (locked by the hyperkey, or over the modifier limit) are
+  // greyed out — in the selector, the preview and the export alike
+  function paint(kb, state) {
     kb.querySelectorAll('.ksv-key').forEach(k => {
       const code = k.dataset.code;
       if (!code) return;
@@ -304,8 +344,8 @@
       k.classList.toggle('on', on);
       k.setAttribute('aria-pressed', on);
       k.classList.toggle('dbl', on && isDbl(state, code));
-      k.classList.toggle('locked', dim && !!(state.locked && state.locked.has(code)));
-      k.classList.toggle('maxed', dim && S.maxed(state, code));
+      k.classList.toggle('locked', !!(state.locked && state.locked.has(code)));
+      k.classList.toggle('maxed', S.maxed(state, code));
     });
   }
 
@@ -448,7 +488,7 @@
         const br = 15 * scale, bx = x + g.kw - br * 0.55, by = g.pad + br * 0.55;
         ctx.beginPath(); ctx.arc(bx, by, br, 0, Math.PI * 2);
         ctx.fillStyle = opts.accent || opts.hyper || '#22d3ee'; ctx.fill();
-        ctx.lineWidth = 2 * scale; ctx.strokeStyle = bg || '#0a0b0d'; ctx.stroke();
+        ctx.lineWidth = 2 * scale; ctx.strokeStyle = bg || opts.badgeRing || '#0a0b0d'; ctx.stroke();
         ctx.fillStyle = opts.hyperFg || '#0a0b0d';
         ctx.font = 700 + ' ' + 17 * scale + 'px ' + UIFONT;
         ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
@@ -489,7 +529,7 @@
       }
       if (c.dbl) {
         const br = 15, bx = x + g.kw - br * 0.55, by = g.pad + br * 0.55;
-        const badgeBg = opts.bg === 'transparent' ? '#0a0b0d' : (opts.bg || '#0c0d10');
+        const badgeBg = opts.bg === 'transparent' ? (opts.badgeRing || '#0a0b0d') : (opts.bg || '#0c0d10');
         parts.push('<circle cx="' + bx + '" cy="' + by + '" r="' + br + '" fill="' + (opts.accent || opts.hyper || '#22d3ee') + '" stroke="' + badgeBg + '" stroke-width="2"/>');
         parts.push(svgText('2', bx, by, { size: 17, weight: 700 }, ' fill="' + (opts.hyperFg || '#0a0b0d') + '"'));
       }
@@ -506,16 +546,19 @@
     opts = opts || {};
     return opts.layout === 'board' ? boardImage(state, opts) : capsImage(state, opts);
   }
+  // downloads go through a Blob and an object URL: no multi-MB base64 string at 4×
   function exportImage(state, opts) {
     return ready(opts.format).then(() => {
       const out = image(state, opts);
       if (!out) return;
-      const a = document.createElement('a');
-      a.download = out.name;
-      a.href = out.svg
-        ? 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(out.svg)
-        : out.canvas.toDataURL(MIME[out.fmt] || 'image/png', 0.95);
-      a.click();
+      const blob = out.svg
+        ? Promise.resolve(new Blob([out.svg], { type: 'image/svg+xml' }))
+        : new Promise((res) => out.canvas.toBlob(res, MIME[out.fmt] || 'image/png', 0.95));
+      return blob.then((b) => {
+        const a = document.createElement('a'), url = URL.createObjectURL(b);
+        a.download = out.name; a.href = url; a.click();
+        setTimeout(() => URL.revokeObjectURL(url), 30000); // once the download has surely started
+      });
     });
   }
   // Browsers only put PNG and SVG images on the clipboard (the app offers copy for those
@@ -556,6 +599,27 @@
 
   /* ---- full-keyboard export ("key press on the actual layout") ---- */
   const BOARD = { pad: 44, g: 8, rowGap: 8, cols: COLS, innerW: 1180 };
+  // the page's look, optional in the keyboard export (and its preview), in export base units —
+  // the keyboard is ~1180 px wide in the page too, so the page's px carry over as they are.
+  // FRAME is the case around the keyboard (.panel in styles.css): 22 px padding, 12 px radius,
+  // a hairline; its colours come from the theme (opts.frameFill / opts.frameStroke). With a translucent surface
+  // (opts.frameBlur) the raster export also blurs what's behind it, like the page's
+  // backdrop-filter: blur(3px) — the grid, the only thing there is to blur.
+  // GRID is the page background (.frame-grid): a 30 px grid of hairlines.
+  const FRAME = { pad: 22, radius: 12, line: 1, stroke: '#1d2026', blur: 3 };
+  const GRID = { step: 30, line: 1 };
+  // the case in the export: FRAME.pad around the keyboard, rounded to whole grid cells and
+  // centred, so with the grid on its four edges sit on grid lines (as in the page). The grid
+  // starts on its top-left corner: gridOrigin() gives the first line at or after 0.
+  function frameRect(d) {
+    const fit = (len) => Math.round((len + 2 * FRAME.pad) / GRID.step) * GRID.step;
+    const w = fit(BOARD.innerW), h = fit(d.H - 2 * BOARD.pad);
+    return { x: (d.W - w) / 2, y: (d.H - h) / 2, w, h };
+  }
+  function gridOrigin(d) {
+    const f = frameRect(d), first = (v) => v - Math.floor(v / GRID.step) * GRID.step;
+    return { x: first(f.x), y: first(f.y) };
+  }
   function boardDims(scale) {
     const b = BOARD;
     const colW = (b.innerW - (b.cols - 1) * b.g) / b.cols;
@@ -592,13 +656,28 @@
       rect(x, y, w, h, fill) { ctx.fillStyle = fill; ctx.fillRect(x, y, w, h); },
       // rounded rect: `fills` painted in order, then an optional stroke with an optional glow
       rrect(x, y, w, h, r, s) {
+        if (s.glow) {
+          // outer glow = the shape's own shadow, painted outside it only (like a CSS
+          // box-shadow): the shape is drawn far off-canvas and only its shadow is offset back,
+          // under an even-odd clip that excludes the shape. Shadows ignore the transform,
+          // hence the scale.
+          const off = 1e4, clip = new Path2D();
+          clip.rect(-off, -off, 3 * off, 3 * off); rrPath(clip, x, y, w, h, r);
+          ctx.save(); ctx.clip(clip, 'evenodd');
+          ctx.shadowColor = s.glow.color; ctx.shadowBlur = s.glow.blur * scale; ctx.shadowOffsetX = off * scale;
+          roundRect(ctx, x - off, y, w, h, r); ctx.fillStyle = '#000'; ctx.fill();
+          ctx.restore();
+        }
         (s.fills || []).forEach((f) => { roundRect(ctx, x, y, w, h, r); ctx.fillStyle = paint(f); ctx.fill(); });
+        if (s.inner) {
+          // inner glow: a stroke's shadow, clipped to the shape so only the inside shows
+          ctx.save(); roundRect(ctx, x, y, w, h, r); ctx.clip();
+          ctx.shadowColor = s.inner.color; ctx.shadowBlur = s.inner.blur * scale;
+          roundRect(ctx, x, y, w, h, r); ctx.lineWidth = 2; ctx.strokeStyle = s.inner.color; ctx.stroke();
+          ctx.restore();
+        }
         if (!s.stroke) return;
-        ctx.save();
-        // canvas shadows ignore the transform: scale the blur to keep the glow proportional
-        if (s.glow) { ctx.shadowColor = s.glow.color; ctx.shadowBlur = s.glow.blur * scale; }
         roundRect(ctx, x, y, w, h, r); ctx.lineWidth = s.lw; ctx.strokeStyle = paint(s.stroke); ctx.stroke();
-        ctx.restore();
       },
       circle(cx, cy, r, s) {
         ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2);
@@ -611,7 +690,21 @@
         ctx.fillText(str, x, y);
       },
       icon(name, x, y, size, color) { drawIcon(ctx, name, x, y, size, color); },
-      group(alpha, fn) { ctx.save(); ctx.globalAlpha *= alpha; fn(); ctx.restore(); }
+      group(alpha, fn) { ctx.save(); ctx.globalAlpha *= alpha; fn(); ctx.restore(); },
+      // CSS backdrop-filter: blur what's already drawn inside the rounded rect. Like
+      // shadowBlur, the filter radius ignores the transform, hence the scale.
+      backdrop(x, y, w, h, r, blur) {
+        if (!('filter' in ctx)) return; // no canvas filter support: no blur, same picture otherwise
+        const under = document.createElement('canvas');
+        under.width = ctx.canvas.width; under.height = ctx.canvas.height;
+        under.getContext('2d').drawImage(ctx.canvas, 0, 0);
+        ctx.save();
+        roundRect(ctx, x, y, w, h, r); ctx.clip();
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
+        ctx.filter = 'blur(' + blur * scale + 'px)';
+        ctx.drawImage(under, 0, 0);
+        ctx.restore();
+      }
     };
   }
   function svgPainter() {
@@ -635,13 +728,31 @@
       const s = col(p);
       return ' ' + k + '="' + s.c + '"' + (s.a < 1 ? ' ' + k + '-opacity="' + s.a + '"' : '');
     };
-    // canvas shadowBlur is twice the Gaussian standard deviation
+    // a glow (canvas shadow) in SVG 1.1 primitives — feDropShadow is SVG 2 only, which older
+    // tools (Illustrator…) may drop: blur the shape's alpha, tint it, put the shape back on
+    // top. canvas shadowBlur is twice the Gaussian standard deviation.
     const glow = (g) => {
       const key = g.color + '|' + g.blur;
       if (!glows[key]) {
         const id = 'f' + (n++), s = col(g.color);
-        defs.push('<filter id="' + id + '" x="-50%" y="-50%" width="200%" height="200%"><feDropShadow dx="0" dy="0" stdDeviation="' + g.blur / 2 +
-          '" flood-color="' + s.c + '" flood-opacity="' + s.a + '"/></filter>');
+        defs.push('<filter id="' + id + '" x="-50%" y="-50%" width="200%" height="200%">' +
+          '<feGaussianBlur in="SourceAlpha" stdDeviation="' + g.blur / 2 + '" result="blur"/>' +
+          '<feFlood flood-color="' + s.c + '" flood-opacity="' + s.a + '" result="tint"/>' +
+          '<feComposite in="tint" in2="blur" operator="in" result="shadow"/>' +
+          '<feMerge><feMergeNode in="shadow"/><feMergeNode in="SourceGraphic"/></feMerge></filter>');
+        glows[key] = id;
+      }
+      return ' filter="url(#' + glows[key] + ')"';
+    };
+    // the same blur, shadow only (the shape itself isn't drawn): an outer glow like box-shadow
+    const shadowOnly = (g) => {
+      const key = 'o|' + g.color + '|' + g.blur;
+      if (!glows[key]) {
+        const id = 'f' + (n++), s = col(g.color);
+        defs.push('<filter id="' + id + '" x="-50%" y="-50%" width="200%" height="200%">' +
+          '<feGaussianBlur in="SourceAlpha" stdDeviation="' + g.blur / 2 + '" result="blur"/>' +
+          '<feFlood flood-color="' + s.c + '" flood-opacity="' + s.a + '" result="tint"/>' +
+          '<feComposite in="tint" in2="blur" operator="in"/></filter>');
         glows[key] = id;
       }
       return ' filter="url(#' + glows[key] + ')"';
@@ -650,8 +761,20 @@
       rect(x, y, w, h, fill) { out.push('<rect x="' + x + '" y="' + y + '" width="' + w + '" height="' + h + '"' + attr('fill', fill) + '/>'); },
       rrect(x, y, w, h, r, s) {
         const box = 'x="' + x + '" y="' + y + '" width="' + w + '" height="' + h + '" rx="' + r + '"';
+        if (s.glow) {
+          // outer glow: the shape's shadow, clipped to everything but the shape (even-odd)
+          const id = 'c' + (n++), big = 1e5;
+          defs.push('<clipPath id="' + id + '"><path clip-rule="evenodd" d="M' + -big + ' ' + -big + 'H' + big + 'V' + big + 'H' + -big + 'Z' + rrD(x, y, w, h, r) + '"/></clipPath>');
+          out.push('<g clip-path="url(#' + id + ')"><rect ' + box + ' fill="#000"' + shadowOnly(s.glow) + '/></g>');
+        }
         (s.fills || []).forEach((f) => out.push('<rect ' + box + attr('fill', f) + '/>'));
-        if (s.stroke) out.push('<rect ' + box + ' fill="none"' + attr('stroke', s.stroke) + ' stroke-width="' + s.lw + '"' + (s.glow ? glow(s.glow) : '') + '/>');
+        if (s.inner) {
+          // inner glow: a glowing stroke clipped to the shape (SVG 1.1 clipPath)
+          const id = 'c' + (n++);
+          defs.push('<clipPath id="' + id + '"><rect ' + box + '/></clipPath>');
+          out.push('<rect ' + box + ' fill="none"' + attr('stroke', s.inner.color) + ' stroke-width="2" clip-path="url(#' + id + ')"' + glow(s.inner) + '/>');
+        }
+        if (s.stroke) out.push('<rect ' + box + ' fill="none"' + attr('stroke', s.stroke) + ' stroke-width="' + s.lw + '"/>');
       },
       circle(cx, cy, r, s) {
         out.push('<circle cx="' + cx + '" cy="' + cy + '" r="' + r + '"' + (s.fill ? attr('fill', s.fill) : ' fill="none"') +
@@ -660,6 +783,8 @@
       text(str, x, y, t) { out.push(svgText(str, x, y, t, attr('fill', t.color))); },
       icon(name, x, y, size, color) { out.push(svgIcon(name, x, y, size, color)); },
       group(alpha, fn) { out.push('<g opacity="' + alpha + '">'); fn(); out.push('</g>'); },
+      // SVG 1.1 has no backdrop filter (BackgroundImage is unsupported in practice): skipped
+      backdrop() {},
       svg(W, H) {
         return '<svg xmlns="http://www.w3.org/2000/svg" width="' + W + '" height="' + H + '" viewBox="0 0 ' + W + ' ' + H + '">' +
           (defs.length ? '<defs>' + defs.join('') + '</defs>' : '') + out.join('') + '</svg>';
@@ -680,7 +805,8 @@
       const grad = { x1: x, y1: y, x2: x + w, y2: y + h, stops: [[0, hexA(accent, O.ringFrom)], [O.ringStop, hexA(accent, O.ringTo)]] };
       p.rrect(x, y, w, h, r, {
         fills: [base, grad, hexA(accent, O.fill)],
-        stroke: grad, lw: 1.5, glow: { color: hexA(accent, O.glow), blur: h * 0.09 }
+        stroke: grad, lw: 1.5, glow: { color: hexA(accent, O.glow), blur: h * O.glowSize },
+        inner: { color: hexA(accent, O.inner), blur: h * O.innerSize }
       });
     } else {
       p.rrect(x, y, w, h, r, { fills: [base], stroke: opts.keyBorder || 'rgba(255,255,255,.08)', lw: 1 });
@@ -708,7 +834,7 @@
     const padX = h * KEYSPEC.padX, padY = h * KEYSPEC.padY, gSize = h * KEYSPEC.glyph, sSize = h * KEYSPEC.sub;
     const keyFg = opts.fg || '#d7dbe0';
     const gx = ralign ? x + w - padX : x + padX;
-    p.icon(glyph, ralign ? gx - gSize : gx, y + padY, gSize, (!on && accentGlyph) ? accent : keyFg);
+    p.icon(glyph, ralign ? gx - gSize : gx, y + padY, gSize, (!on && accentGlyph) ? (opts.accentInk || accent) : keyFg);
     p.text(sub, gx, y + h - padY - sSize / 2, { size: sSize, weight: 500, color: keyFg, align: ralign ? 'right' : 'left' });
   }
   // arrow key: surface + a centered ICONS glyph
@@ -743,12 +869,22 @@
   function drawBoard(p, state, opts, d, bg) {
     const b = BOARD;
     const sel = state.sel, on = (c) => isOn(state, c);
-    // greyed-out keys (opts.dim, on by default): locked by the hyperkey or over the modifier limit
-    const dim = opts.dim !== false;
     const keyH = d.keyH, colW = d.colW, r = d.r;
     const accent = opts.accent || opts.hyper || '#22d3ee';
     const keyFg = opts.fg || '#d7dbe0';
     if (bg) p.rect(0, 0, d.W, d.H, bg);
+    if (opts.grid) {
+      const c = opts.gridColor || 'rgba(255,255,255,.02)';
+      // lines centred on the frame's edges (a stroke straddles its path)
+      const g0 = gridOrigin(d), half = GRID.line / 2;
+      for (let x = g0.x; x < d.W; x += GRID.step) p.rect(x - half, 0, GRID.line, d.H, c);
+      for (let y = g0.y; y < d.H; y += GRID.step) p.rect(0, y - half, d.W, GRID.line, c);
+    }
+    if (opts.frame) {
+      const f = frameRect(d);
+      if (opts.frameBlur) p.backdrop(f.x, f.y, f.w, f.h, FRAME.radius, opts.frameBlur);
+      p.rrect(f.x, f.y, f.w, f.h, FRAME.radius, { fills: [opts.frameFill || THEMES.dark.frame.solid], stroke: opts.frameStroke || FRAME.stroke, lw: FRAME.line });
+    }
 
     // function row — esc (wide) + F1..F12 (square) + a blank Touch ID square at the far right
     let y = b.pad;
@@ -779,16 +915,18 @@
         const [code, label, sub, span, cls] = cell;
         const w = span * colW + (span - 1) * b.g;
         if (code === 'arrows') {
-          const colw = (w - 2 * b.g) / 3, cellH = (keyH - b.g) / 2;
+          // the arrow cluster's gap is half the key gap (as in the page: .ksv-arrows)
+          const ag = b.g / 2, colw = (w - 2 * ag) / 3, cellH = (keyH - ag) / 2;
           const ar = keyH * KEYSPEC.radius * 0.6, af = keyH * KEYSPEC.sub;
-          barrow(p, x + colw + b.g, y, colw, cellH, ar, on('up'), opts, accent, 'up', af);
-          barrow(p, x, y + cellH + b.g, colw, cellH, ar, on('left'), opts, accent, 'left', af);
-          barrow(p, x + colw + b.g, y + cellH + b.g, colw, cellH, ar, on('down'), opts, accent, 'down', af);
-          barrow(p, x + 2 * (colw + b.g), y + cellH + b.g, colw, cellH, ar, on('right'), opts, accent, 'right', af);
+          barrow(p, x + colw + ag, y, colw, cellH, ar, on('up'), opts, accent, 'up', af);
+          barrow(p, x, y + cellH + ag, colw, cellH, ar, on('left'), opts, accent, 'left', af);
+          barrow(p, x + colw + ag, y + cellH + ag, colw, cellH, ar, on('down'), opts, accent, 'down', af);
+          barrow(p, x + 2 * (colw + ag), y + cellH + ag, colw, cellH, ar, on('right'), opts, accent, 'right', af);
           x += w + b.g; return;
         }
         const isSel = on(code);
-        const grey = dim && ((state.locked && state.locked.has(code)) || S.maxed(state, code));
+        // greyed out as on screen: locked by the hyperkey or over the modifier limit
+        const grey = (state.locked && state.locked.has(code)) || S.maxed(state, code);
         p.group(grey ? 0.28 : 1, () => {
           if (code === 'space') {
             bkey(p, x, y, w, keyH, r, isSel, opts, accent, '', 20);
@@ -797,7 +935,7 @@
             boardSurface(p, x, y, w, keyH, r, isSel, opts, accent);
             const padX = keyH * KEYSPEC.padX, padY = keyH * KEYSPEC.padY;
             const gSize = keyH * KEYSPEC.glyph, sSize = keyH * KEYSPEC.sub;
-            p.icon('globe', x + padX, y + keyH - padY - gSize, gSize, isSel ? keyFg : accent);
+            p.icon('globe', x + padX, y + keyH - padY - gSize, gSize, isSel ? keyFg : (opts.accentInk || accent));
             p.text('fn', x + w - padX, y + padY + sSize / 2, { size: sSize, weight: 500, color: keyFg, align: 'right' });
           } else if (cls && /\bsm\b/.test(cls)) {
             const ralign = /\bralign\b/.test(cls), accentGlyph = /\b(modkey|hyper)\b/.test(cls);
@@ -809,7 +947,7 @@
           }
           if (isDbl(state, code)) {
             const br = keyH * 0.16, bx = x + w - br * 0.6, by = y + br * 0.6;
-            p.circle(bx, by, br, { fill: accent, stroke: bg || '#0a0b0d', lw: 1.5 });
+            p.circle(bx, by, br, { fill: accent, stroke: bg || opts.badgeRing || '#0a0b0d', lw: 1.5 });
             p.text('2', bx, by + 0.5, { size: br * 1.1, weight: 700, color: opts.hyperFg || '#0a0b0d' });
           }
         });
@@ -819,7 +957,19 @@
     });
   }
 
-  window.KSV = { buildKeyboard, buildBoardPreview, renderCaps, caps, render: image, exportImage, copyImage, exportSize, boardSize, canEncode, paint, icon, HYPER, KEYBG, COLS };
+  window.KSV = { buildKeyboard, buildBoardPreview, renderCaps, caps, render: image, exportImage, copyImage, exportSize, boardSize, boardDims, frameRect, gridOrigin, BOARD, FRAME, GRID, THEMES, ink, canEncode, paint, icon, el, HYPER, KEYBG, COLS };
+  // a rounded rect as a sub-path of a Path2D (for the even-odd glow clip)
+  function rrPath(p, x, y, w, h, r) {
+    p.moveTo(x + r, y); p.arcTo(x + w, y, x + w, y + h, r); p.arcTo(x + w, y + h, x, y + h, r);
+    p.arcTo(x, y + h, x, y, r); p.arcTo(x, y, x + w, y, r); p.closePath();
+  }
+  // the same as SVG path data
+  function rrD(x, y, w, h, r) {
+    return 'M' + (x + r) + ' ' + y + 'H' + (x + w - r) + 'A' + r + ' ' + r + ' 0 0 1 ' + (x + w) + ' ' + (y + r) +
+      'V' + (y + h - r) + 'A' + r + ' ' + r + ' 0 0 1 ' + (x + w - r) + ' ' + (y + h) +
+      'H' + (x + r) + 'A' + r + ' ' + r + ' 0 0 1 ' + x + ' ' + (y + h - r) +
+      'V' + (y + r) + 'A' + r + ' ' + r + ' 0 0 1 ' + (x + r) + ' ' + y + 'Z';
+  }
   function roundRect(ctx, x, y, w, h, r) {
     ctx.beginPath();
     ctx.moveTo(x + r, y);

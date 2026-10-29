@@ -26,15 +26,34 @@ body { overflow: auto; }
   padding: 16px 0 4px; pointer-events: none;
 }
 .opt-d .d-footer .cf-meta { display: flex; align-items: center; gap: 9px; min-width: 0; }
-/* the label stays hidden until renderVersion() fills it from config.js (no static fallback to go stale) */
-.opt-d .d-footer .cf-ver:empty { display: none; }
-.opt-d .d-footer .cf-ver { flex: none; font: 600 10.5px/1 var(--mono); letter-spacing: .06em; color: var(--accent); padding: 3px 6px; border: 1px solid color-mix(in oklab, var(--accent) 35%, #23262d); border-radius: 5px; }
+/* version tag and its menu of archived versions (renderVersion); hidden until config.js fills it */
+.opt-d .d-footer .ver-menu { position: relative; flex: none; pointer-events: auto; }
+.opt-d .d-footer .ver-menu[hidden] { display: none; }
+.opt-d .d-footer .cf-ver { display: inline-flex; align-items: center; gap: 3px; background: none; cursor: pointer; }
+.opt-d .d-footer .cf-ver:disabled { cursor: default; }
+.opt-d .d-footer .cf-ver .ic { font-size: 11px; transition: transform .15s ease; }
+.opt-d .d-footer .cf-ver[aria-expanded="true"] .ic { transform: rotate(180deg); }
+.opt-d .ver-list {
+  position: absolute; left: 0; bottom: calc(100% + 8px); z-index: 5; min-width: 210px;
+  display: flex; flex-direction: column; padding: 4px; border: 1px solid var(--line); border-radius: 8px;
+  background: var(--rail-solid); box-shadow: 0 8px 24px rgba(0,0,0,.25);
+}
+.opt-d .ver-list[hidden] { display: none; }
+.opt-d .ver-item {
+  display: flex; align-items: baseline; gap: 10px; padding: 7px 9px; border-radius: 5px;
+  font: 600 11.5px/1 var(--mono); color: var(--text); text-decoration: none; letter-spacing: .04em;
+}
+.opt-d .ver-item em { font-style: normal; font-weight: 500; color: var(--muted-text); }
+.opt-d .ver-item em .ic { display: inline-block; font-size: 10px; margin-left: 4px; vertical-align: -1px; }
+.opt-d .ver-item.is-current { color: var(--accent-ink); cursor: default; }
+.opt-d a.ver-item:hover, .opt-d a.ver-item:focus-visible { background: var(--field-hover); outline: none; }
+.opt-d .d-footer .cf-ver { flex: none; font: 600 10.5px/1 var(--mono); letter-spacing: .06em; color: var(--accent-ink); padding: 3px 6px; border: 1px solid color-mix(in oklab, var(--accent) 35%, var(--pill-line)); border-radius: 5px; }
 .opt-d .d-footer .cf-text { font: 500 11.5px/1 var(--mono); color: var(--muted-text); letter-spacing: .01em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .opt-d .d-footer .cf-link { display: inline-flex; align-items: center; gap: 4px; font: 500 12px/1 var(--mono); letter-spacing: .04em; color: var(--muted-text); text-decoration: none; flex: none; pointer-events: auto; transition: color .14s ease; }
-.opt-d .d-footer .cf-link:hover { color: var(--accent); }
+.opt-d .d-footer .cf-link:hover { color: var(--accent-ink); }
 .ksv-kb { display: flex; flex-direction: column; gap: var(--g, 6px); width: 100%; }
-.ksv-fnrow { display: grid; grid-template-columns: repeat(58, 1fr); gap: var(--g, 6px); }
-.ksv-row { display: grid; grid-template-columns: repeat(58, 1fr); gap: var(--g, 6px); }
+.ksv-fnrow { display: grid; grid-template-columns: repeat(var(--cols, 58), 1fr); gap: var(--g, 6px); }
+.ksv-row { display: grid; grid-template-columns: repeat(var(--cols, 58), 1fr); gap: var(--g, 6px); }
 /* blank Touch ID placeholder at the end of the function row */
 .ksv-touchid { pointer-events: none; opacity: .4; }
 .ksv-touchid::after { content: ''; width: 38%; aspect-ratio: 1; border-radius: 50%; border: 1px solid var(--keyBorder); opacity: .55; }
@@ -61,12 +80,12 @@ body { overflow: auto; }
 .ic { display: block; }
 /* a run of glyphs inline in text (segmented control labels) */
 .ic-row { display: inline-flex; align-items: center; gap: 1px; font-size: 13px; vertical-align: middle; }
-.ksv-key.modkey:not(.on) .cap, .ksv-key.hyper:not(.on) .cap { color: var(--accent); }
+.ksv-key.modkey:not(.on) .cap, .ksv-key.hyper:not(.on) .cap { color: var(--accent-ink, var(--accent)); }
 .ksv-key.sm .sub { font-size: max(var(--fmin-sub, 11px), calc(var(--keyH, 56px) * var(--r-sub, 0.196))); font-weight: 500; letter-spacing: .01em; color: var(--keyFg); }
 .ksv-key:hover { border-color: var(--accent); }
 .ksv-key.is-hyper:not(.on) { border-color: var(--accent); }
-.ksv-key.is-hyper:not(.on) .cap { color: var(--accent); }
-.ksv-key.is-hyper:not(.on) .sub { color: var(--accent); }
+.ksv-key.is-hyper:not(.on) .cap { color: var(--accent-ink, var(--accent)); }
+.ksv-key.is-hyper:not(.on) .sub { color: var(--accent-ink, var(--accent)); }
 .ksv-key.locked { opacity: .28; cursor: not-allowed; }
 .ksv-key.locked:hover { border-color: var(--keyBorder); }
 .ksv-key.maxed { opacity: .28; cursor: not-allowed; }
@@ -106,10 +125,13 @@ body { overflow: auto; }
 /* glow geometry is per-surface (the selector tracks the cursor; the preview is
    static) but its accent opacity is shared via --on-glow */
 .opt-d .stage .ksv-key.on {
-  box-shadow: var(--glow-x, 0px) var(--glow-y, 0px) 16px -6px color-mix(in oklab, var(--accent) calc(var(--on-glow, 0.5) * 100%), transparent);
+  box-shadow:
+    0 0 calc(var(--keyH) * var(--on-glow-size, 0.1)) 0 color-mix(in oklab, var(--accent) calc(var(--on-glow, 0.55) * 100%), transparent),
+    inset 0 0 calc(var(--keyH) * var(--on-inner-size, 0.16)) color-mix(in oklab, var(--accent) calc(var(--on-inner, 0.55) * 100%), transparent);
 }
-.ksv-arrows { display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: 1fr 1fr; gap: 3px; }
-.ksv-arrows .ar { height: calc((var(--keyH, 58px) - 3px) / 2); font-size: max(var(--fmin-sub, 11px), calc(var(--keyH, 56px) * var(--r-sub, 0.196))); border-radius: calc(var(--keyH, 56px) * var(--r-radius, 0.125) * 0.6); }
+/* the arrow cluster's gap is half the key gap — the export draws the same (drawBoard) */
+.ksv-arrows { display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: 1fr 1fr; gap: calc(var(--g, 6px) / 2); }
+.ksv-arrows .ar { height: calc((var(--keyH, 58px) - var(--g, 6px) / 2) / 2); font-size: max(var(--fmin-sub, 11px), calc(var(--keyH, 56px) * var(--r-sub, 0.196))); border-radius: calc(var(--keyH, 56px) * var(--r-radius, 0.125) * 0.6); }
 .ar.up { grid-column: 2; grid-row: 1; } .ar.lf { grid-column: 1; grid-row: 2; }
 .ar.dn { grid-column: 2; grid-row: 2; } .ar.rt { grid-column: 3; grid-row: 2; }
 
@@ -154,9 +176,19 @@ body { overflow: auto; }
   --keyFg: #d7dbe0; --keyBorder: #23262d;
   /* translucent so the live keys read frosted over the panel; the flat export and
      its preview use the solid colour instead (KSV.KEYBG, applied via applySpec) */
-  --keyBg: rgba(19,21,25,0.6);
+  --keyBg: rgba(19,21,25,0.6); /* fallback: applySpec sets it from KSV.SURFACE.translucent */
   --chipBg: #131519; --chipFg: #e6eaef; --chipBorder: #23262d; --muted: #5a616b;
-  background: #0a0b0d; color: #d7dbe0;
+  /* canvas tokens: set from KSV.THEMES by app.js (applyCanvas); dark values as fallback */
+  --canvas-bg: #0a0b0d; --check-base: #0c0d10; --check: rgba(255,255,255,.07);
+  --grid-color: rgba(255,255,255,.02); --frame-stroke: #1d2026; --accent-ink: var(--accent);
+  /* chrome tokens: the page's own UI, dark here and light under .theme-light */
+  --text: #d7dbe0; --title: #f4f6f7; --label: #7b828c;
+  --line: #1d2026; --line-soft: #16191d;
+  --field: #0a0b0d; --field-text: #8a93a0; --field-hover: #1b1f25; --field-hover-text: #cfd4da;
+  --pill-line: #23262d; --pill-hover: #3a3f48;
+  --rail-bg: rgba(13,15,18,0.4); --rail-solid: #0b0d0f;
+  --track: #1d2026; --thumb-ring: #0a0b0d; --sw-on: #f4f6f4; --sw-inset: rgba(255,255,255,.14);
+  background: var(--canvas-bg); color: var(--text);
   position: relative;
   /* desktop-only: never let the layout cram below this — narrower viewports scroll horizontally */
   min-width: 1120px;
@@ -167,8 +199,10 @@ body { overflow: auto; }
 }
 .opt-d .frame-grid {
   position: absolute; inset: 0; z-index: 0; pointer-events: none;
-  background-image: linear-gradient(#ffffff05 1px, transparent 1px), linear-gradient(90deg, #ffffff05 1px, transparent 1px);
+  background-image: linear-gradient(var(--grid-color) 1px, transparent 1px), linear-gradient(90deg, var(--grid-color) 1px, transparent 1px);
   background-size: 30px 30px;
+  /* anchored on the keyboard case's top-left corner (app.js alignToGrid) */
+  background-position: var(--grid-x, 0px) var(--grid-y, 0px);
 }
 /* left stage */
 .opt-d .stage {
@@ -181,24 +215,25 @@ body { overflow: auto; }
     linear-gradient(color-mix(in oklab, var(--accent) 28%, transparent) 1px, transparent 1px),
     linear-gradient(90deg, color-mix(in oklab, var(--accent) 28%, transparent) 1px, transparent 1px);
   background-size: 30px 30px;
-  background-position: var(--vx, 0px) var(--vy, 0px);
+  background-position: calc(var(--grid-x, 0px) + var(--vx, 0px)) calc(var(--grid-y, 0px) + var(--vy, 0px));
   -webkit-mask-image: radial-gradient(var(--glow-r, 90px) circle at var(--gx, 50%) var(--gy, -40%), #000, rgba(0,0,0,.3) 50%, transparent 72%);
   mask-image: radial-gradient(var(--glow-r, 90px) circle at var(--gx, 50%) var(--gy, -40%), #000, rgba(0,0,0,.3) 50%, transparent 72%);
 }
 .opt-d .head { width: 100%; max-width: var(--content-max); margin: 0 auto 22px; }
-.opt-d .head .eyebrow { display: block; font: 600 11px/1 var(--ui); letter-spacing: .2em; text-transform: uppercase; color: var(--accent); margin-bottom: 11px; }
-.opt-d .head .title { margin: 0; font: 700 clamp(36px, 2.4vw, 48px)/1 var(--ui); letter-spacing: -.025em; color: #f4f6f7; }
+.opt-d .head .eyebrow { display: block; font: 600 11px/1 var(--ui); letter-spacing: .2em; text-transform: uppercase; color: var(--accent-ink); margin-bottom: 11px; }
+.opt-d .head .title { margin: 0; font: 700 clamp(36px, 2.4vw, 48px)/1 var(--ui); letter-spacing: -.025em; color: var(--title); }
 .opt-d .head .lede { margin: 13px 0 0; font: 500 12.5px/1.5 var(--mono); color: var(--muted-text); }
-.opt-d .head .lede b { color: var(--accent); font-weight: 600; white-space: nowrap; }
+.opt-d .head .lede b { color: var(--accent-ink); font-weight: 600; white-space: nowrap; }
 .opt-d .head .lede b .ic { display: inline-block; vertical-align: -.15em; margin-right: 1px; }
-.opt-d .panel { border: 1px solid #1d2026; background: rgba(13,15,18,0.4); -webkit-backdrop-filter: blur(3px); backdrop-filter: blur(3px); border-radius: 12px; padding: 22px; margin: 0; }
+/* the case's fill and hairline come from KSV.THEMES (set inline by applyCanvas) */
+.opt-d .panel { position: relative; border: 1px solid var(--frame-stroke); background: rgba(13,15,18,0.4); -webkit-backdrop-filter: blur(3px); backdrop-filter: blur(3px); border-radius: 12px; padding: 22px; margin: 0; }
 .opt-d .kb-wrap { margin: auto; width: 100%; max-width: var(--content-max); }
 .opt-d .kb-foot { display: flex; justify-content: flex-end; margin-top: 12px; }
 .opt-d .reset-btn {
   display: inline-flex; align-items: center; gap: 6px; padding: 6px 0; background: none; border: none;
   cursor: pointer; font: 500 12px/1 var(--mono); letter-spacing: .04em; color: var(--muted-text); transition: color .14s ease;
 }
-.opt-d .reset-btn:hover { color: var(--accent); }
+.opt-d .reset-btn:hover { color: var(--accent-ink); }
 
 /* modifier-key controls live in the main frame, by the keyboard */
 .opt-d .kb-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 14px 26px; margin: 0 0 16px; }
@@ -206,7 +241,7 @@ body { overflow: auto; }
 .opt-d .kbc.accent-kbc { margin-left: auto; }
 .opt-d .kbc.accent-kbc .swatches { gap: 6px; }
 .opt-d .kbc.accent-kbc .sw-chip { width: 22px; height: 22px; border-radius: 6px; }
-.opt-d .kbc-l { font: 500 12.5px/1 var(--mono); color: #7b828c; }
+.opt-d .kbc-l { font: 500 12.5px/1 var(--mono); color: var(--label); }
 
 /* right rail — floats over the grid like the keyboard case */
 .opt-d .rail {
@@ -214,81 +249,93 @@ body { overflow: auto; }
   margin: 16px 16px 16px 0;
   /* match the keyboard case (.panel) so both floating surfaces read the same:
      same border, radius, fill, blur, and no shadow */
-  border: 1px solid #1d2026; border-radius: 12px;
-  background: rgba(13,15,18,0.4);
+  border: 1px solid var(--line); border-radius: 12px;
+  background: var(--rail-bg);
   -webkit-backdrop-filter: blur(3px); backdrop-filter: blur(3px);
   display: flex; flex-direction: column; min-height: 0; overflow: hidden;
 }
 .opt-d .rlbl { font: 500 11px/1 var(--mono); letter-spacing: .04em; color: var(--muted-text); }
 .opt-d .prev-card {
-  margin-top: 12px; min-height: 80px; border: 1px solid #1d2026; background: #0a0b0d;
+  margin-top: 12px; min-height: 80px; border: 1px solid var(--line); background: var(--canvas-bg);
   border-radius: 10px; padding: 16px 14px; display: flex; align-items: center; justify-content: center; overflow: hidden;
-  background-image: linear-gradient(#ffffff04 1px, transparent 1px), linear-gradient(90deg, #ffffff04 1px, transparent 1px);
-  background-size: 14px 14px;
 }
 
 .opt-d .inspector { flex: 1; overflow-y: auto; overflow-x: hidden; padding: 20px; display: flex; flex-direction: column; gap: 32px; }
 .opt-d .grp { display: flex; flex-direction: column; gap: 13px; }
 .opt-d .grp-h { font: 600 10.5px/1 var(--mono); letter-spacing: .16em; text-transform: uppercase; color: var(--muted-text); margin-bottom: 5px; }
 .opt-d .fl-row { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
-.opt-d .cap { font: 500 11.5px/1 var(--mono); color: var(--accent); letter-spacing: .01em; }
-.opt-d .seg { display: inline-flex; gap: 3px; background: #0a0b0d; border: 1px solid #1d2026; border-radius: 8px; padding: 3px; }
+/* accent readout (the output resolution). Not `.cap`: that's a key's glyph, and the two
+   collided in the preview, where selected keys took the accent */
+.opt-d .readout { font: 500 11.5px/1 var(--mono); color: var(--accent-ink); letter-spacing: .01em; }
+.opt-d .seg { display: inline-flex; gap: 3px; background: var(--field); border: 1px solid var(--line); border-radius: 8px; padding: 3px; }
 .opt-d .seg.wide { width: 100%; }
 .opt-d .seg.wide button { flex: 1; }
-.opt-d .seg button { height: 27px; padding: 0 11px; border: none; background: none; border-radius: 5px; font: 600 11.5px/1 var(--mono); color: #8a93a0; cursor: pointer; text-transform: lowercase; }
+.opt-d .seg button { height: 27px; padding: 0 11px; border: none; background: none; border-radius: 5px; font: 600 11.5px/1 var(--mono); color: var(--field-text); cursor: pointer; text-transform: lowercase; }
 .opt-d .seg button.on { background: var(--accent); color: var(--onFg, #0a0b0d); }
-.opt-d .seg button:not(.on):not(.is-off):hover { background: #1b1f25; color: #cfd4da; }
+.opt-d .seg button:not(.on):not(.is-off):hover { background: var(--field-hover); color: var(--field-hover-text); }
 .opt-d .seg-beta { margin-left: 5px; padding: 0 4px; border: 1px solid currentColor; border-radius: 3px; font-size: 8.5px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; opacity: .65; vertical-align: middle; }
 .opt-d .seg button.is-off { opacity: .3; cursor: not-allowed; }
 .opt-d .seg.disabled { opacity: .42; }
 .opt-d .seg.disabled button { cursor: not-allowed; }
 
+/* independent on/off toggles (several can be on): separate pills, outlined when off,
+   accent-tinted when on — unlike .seg, whose solid fill marks the one choice */
+.opt-d .pills { display: inline-flex; gap: 6px; }
+.opt-d .pills button {
+  height: 27px; padding: 0 12px; border-radius: 999px; border: 1px solid var(--pill-line); background: none;
+  font: 600 11.5px/1 var(--mono); color: var(--field-text); cursor: pointer; text-transform: lowercase;
+  transition: color .14s ease, border-color .14s ease, background-color .14s ease;
+}
+.opt-d .pills button:not(.on):not(:disabled):hover { border-color: var(--pill-hover); color: var(--field-hover-text); }
+.opt-d .pills button.on {
+  color: var(--accent-ink); border-color: color-mix(in oklab, var(--accent) 60%, transparent);
+  background: color-mix(in oklab, var(--accent) 14%, transparent);
+}
+.opt-d .pills.disabled { opacity: .42; }
+.opt-d .pills.disabled button { cursor: not-allowed; }
+
 /* export scale slider — same track/fill language as the segmented controls */
 /* one labelled control per line in the output group (unavailable keys) */
 .opt-d .opt-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-left: 2px; white-space: nowrap; }
 .opt-d .scale-row { display: flex; align-items: center; gap: 12px; height: 35px; padding: 0 2px; }
-.opt-d .scale-row .cap { min-width: 30px; text-align: right; }
+.opt-d .scale-row .readout { min-width: 30px; text-align: right; white-space: nowrap; }
 .opt-d .scale-row.disabled { opacity: .42; }
 .opt-d .scale-row input[type="range"] {
-  flex: 1; height: 4px; margin: 0; border-radius: 4px; cursor: pointer; -webkit-appearance: none; appearance: none;
-  background: linear-gradient(var(--accent), var(--accent)) 0 / var(--fill, 33%) 100% no-repeat, #1d2026;
+  flex: 1; min-width: 0; height: 4px; margin: 0; border-radius: 4px; cursor: pointer; -webkit-appearance: none; appearance: none;
+  background: linear-gradient(var(--accent), var(--accent)) 0 / var(--fill, 33%) 100% no-repeat, var(--track);
 }
 .opt-d .scale-row input[type="range"]:disabled { cursor: not-allowed; }
 .opt-d .scale-row input[type="range"]::-webkit-slider-thumb {
   -webkit-appearance: none; appearance: none; width: 14px; height: 14px; border-radius: 50%;
-  background: var(--accent); border: 3px solid #0a0b0d; box-shadow: 0 0 0 1px var(--accent);
+  background: var(--accent); border: 3px solid var(--thumb-ring); box-shadow: 0 0 0 1px var(--accent);
 }
 .opt-d .scale-row input[type="range"]::-moz-range-thumb {
-  width: 8px; height: 8px; border-radius: 50%; background: var(--accent); border: 3px solid #0a0b0d; box-shadow: 0 0 0 1px var(--accent);
+  width: 8px; height: 8px; border-radius: 50%; background: var(--accent); border: 3px solid var(--thumb-ring); box-shadow: 0 0 0 1px var(--accent);
 }
 
-.opt-d .rail-foot { padding: 16px 20px 20px; border-top: 1px solid #16191d; display: flex; gap: 10px; }
+.opt-d .rail-foot { padding: 16px 20px 20px; border-top: 1px solid var(--line-soft); display: flex; gap: 10px; }
 .opt-d .rail-foot .go { flex: 1; white-space: nowrap; display: flex; align-items: center; justify-content: center; gap: 6px; height: 40px; border-radius: 8px; border: none; background: var(--accent); color: var(--onFg, #0a0b0d); font: 700 13px/1 var(--mono); cursor: pointer; text-transform: lowercase; }
 .opt-d .rail-foot .go:hover { filter: brightness(1.06); }
 /* secondary action next to download: outlined, fills once copied */
-.opt-d .rail-foot .go.alt { flex: none; padding: 0 14px; background: none; color: var(--accent); box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--accent) 45%, transparent); }
+.opt-d .rail-foot .go.alt { flex: none; padding: 0 14px; background: none; color: var(--accent-ink); box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--accent) 45%, transparent); }
 .opt-d .rail-foot .go.alt:hover { filter: none; background: color-mix(in oklab, var(--accent) 12%, transparent); }
 .opt-d .rail-foot .go.alt:disabled { opacity: .42; cursor: not-allowed; background: none; }
 .opt-d .rail-foot .go.alt.is-done { background: color-mix(in oklab, var(--accent) 18%, transparent); }
 
 /* preview pinned at the bottom of the rail */
-.opt-d .rail-prev { padding: 18px 20px; border-top: 1px solid #16191d; }
-.opt-d .rail-prev .cap { color: var(--accent); }
+.opt-d .rail-prev { padding: 18px 20px; border-top: 1px solid var(--line-soft); display: flex; flex-direction: column; gap: 13px; }
+.opt-d .rail-prev .prev-card { margin-top: 0; }
 
 /* ===== shared accent swatches ===== */
 .swatches { display: flex; gap: 7px; }
-.sw-chip { width: 26px; height: 26px; border-radius: 7px; border: 2px solid transparent; cursor: pointer; padding: 0; box-shadow: inset 0 0 0 1px rgba(255,255,255,.14); transition: transform .08s ease; }
+.sw-chip { width: 26px; height: 26px; border-radius: 7px; border: 2px solid transparent; cursor: pointer; padding: 0; box-shadow: inset 0 0 0 1px var(--sw-inset, rgba(255,255,255,.14)); transition: transform .08s ease; }
 .sw-chip:hover { transform: translateY(-1px); }
-.sw-chip.on { border-color: #f4f6f4; box-shadow: inset 0 0 0 1px rgba(0,0,0,.35); }
+.sw-chip.on { border-color: var(--sw-on, #f4f6f4); box-shadow: inset 0 0 0 1px rgba(0,0,0,.35); }
 
-/* ===== preview background variants ===== */
-/* dark export is a flat #0a0b0d fill — drop the preview grid so it matches */
-.ksv-app .prev-card.bg-dark { background-image: none; }
-.ksv-app .prev-card.bg-light { background: #f3f0f8; background-image: none; border-color: #e2dcec; }
-.ksv-app .bg-light .ksv-plus { color: #9aa094; }
-.ksv-app .prev-card.bg-trans {
-  background-color: #0c0d10;
-  background-image: conic-gradient(#ffffff12 90deg, transparent 90deg 180deg, #ffffff12 180deg 270deg, transparent 270deg);
+/* ===== transparent background: a checkerboard in the theme's tones ===== */
+.ksv-app .prev-card.is-trans, .opt-d.cv-trans {
+  background-color: var(--check-base);
+  background-image: conic-gradient(var(--check) 90deg, transparent 90deg 180deg, var(--check) 180deg 270deg, transparent 270deg);
   background-size: 18px 18px;
 }
 
@@ -296,18 +343,28 @@ body { overflow: auto; }
    The preview is a real (static) selector keyboard: it inherits every KEYSPEC
    ratio, so it shares the selector's exact proportions. Only the px floors are
    zeroed (via the static flag in applySpec) so labels shrink with the keys. */
-.ksv-app .is-board .ksv-kb { width: 100%; }
+.ksv-app .is-board .ksv-kb { width: 100%; position: relative; }
+/* the board preview is the export scaled down (sizes set in app.js): no card padding */
+.opt-d .prev-card.is-board { padding: 0; }
+.ksv-app .prev-board { position: relative; flex: none; box-sizing: border-box; }
+.ksv-app .prev-board.with-grid {
+  background-image:
+    linear-gradient(var(--grid-color) var(--grid-line), transparent var(--grid-line)),
+    linear-gradient(90deg, var(--grid-color) var(--grid-line), transparent var(--grid-line));
+  background-size: var(--grid-step) var(--grid-step);
+}
+.ksv-app .prev-frame { position: absolute; border: 1px solid; box-sizing: border-box; }
 /* solid key surface (--keyBg) is set on the preview keyboard by applySpec from the
    shared KSV.KEYBG, so it always matches the export */
 .ksv-app .is-board .ksv-key { min-height: 0; }
 .ksv-app .is-board .ksv-key.sm .sub { display: block; }
 .ksv-app .is-board .ksv-fnrow { gap: var(--g); }
-.ksv-app .is-board .ksv-arrows { gap: 2px; }
-.ksv-app .is-board .ksv-arrows .ar { height: calc((var(--keyH) - 2px) / 2); }
 .ksv-app .is-board .ksv-key:hover { border-color: var(--keyBorder); }
 /* board preview shares the fill + ring rule above; only its static glow differs */
 .opt-d .is-board .ksv-key.on {
-  box-shadow: 0 0 12px -4px color-mix(in oklab, var(--accent) calc(var(--on-glow, 0.5) * 100%), transparent);
+  box-shadow:
+    0 0 calc(var(--keyH) * var(--on-glow-size, 0.12)) 0 color-mix(in oklab, var(--accent) calc(var(--on-glow, 0.8) * 100%), transparent),
+    inset 0 0 calc(var(--keyH) * var(--on-inner-size, 0.16)) color-mix(in oklab, var(--accent) calc(var(--on-inner, 0.55) * 100%), transparent);
 }
 /* static export-preview keyboard is display-only, not interactive */
 .ksv-static .ksv-key { pointer-events: none; cursor: default; }
@@ -317,3 +374,61 @@ body { overflow: auto; }
   outline: 2px solid var(--accent); outline-offset: 2px;
 }
 .opt-d .seg button:focus-visible { outline-offset: 0; }
+
+/* ===== the canvas shows the export settings (app.js applyCanvas) =====
+   theme, background, grid, frame and surface: what the export draws, the page draws too.
+   Canvas colours come from KSV.THEMES as variables; the chrome follows .theme-light. */
+.opt-d.cv-no-grid .frame-grid, .opt-d.cv-no-grid .grid-lit { display: none; }
+/* the rail is UI, not canvas: opaque over the checkerboard */
+.opt-d.cv-trans .rail { background: var(--rail-solid); }
+
+/* ===== light theme: the page's chrome (AA contrast on the light canvas and rail) ===== */
+.opt-d.theme-light {
+  --text: #1d2025; --title: #0f1114; --label: #4f5560; --muted-text: #555c67;
+  --line: #d5d9e0; --line-soft: #e1e4e9;
+  --field: #ffffff; --field-text: #555c67; --field-hover: #eef0f3; --field-hover-text: #1d2025;
+  --pill-line: #cfd3da; --pill-hover: #a9afb9;
+  --rail-bg: rgba(255,255,255,0.55); --rail-solid: #f7f8fa;
+  --track: #d5d9e0; --thumb-ring: #ffffff; --sw-on: #14161a; --sw-inset: rgba(0,0,0,.12);
+}
+
+/* ===== cursor light on the hairlines: near the cursor, the case's and the keys' borders
+   light up, with a soft glow around the lit part. The rings live in .spot-layer, an empty
+   copy of the keyboard laid over it inside the case (app.js buildSpotLayer): each ring is
+   one radial gradient fixed to the viewport (at the cursor glow's position, set on .panel)
+   masked to a 1 px border, so every border samples the same light; the layer's
+   drop-shadow then glows only what's lit, fading with it. Page only: no cursor in exports. */
+.opt-d .spot-layer {
+  position: absolute; inset: -1px; border-radius: inherit; pointer-events: none; z-index: 2;
+  opacity: var(--spot-o, 0); transition: opacity .3s ease;
+  filter: drop-shadow(0 0 2px color-mix(in oklab, var(--accent) 90%, transparent))
+          drop-shadow(0 0 7px color-mix(in oklab, var(--accent) 55%, transparent));
+}
+.opt-d .spot-layer .ksv-kb { position: absolute; }
+/* (stronger than the selected-key rule, which would otherwise paint the copies too) */
+.opt-d .stage .spot-layer .ksv-key, .opt-d .stage .spot-layer .ksv-key.on { background: none; border-color: transparent; box-shadow: none; color: transparent; }
+.opt-d .spot-layer .ksv-key > *, .opt-d .spot-layer .ksv-key::after { visibility: hidden; }
+.opt-d .spot-ring, .opt-d .spot-layer .ksv-key::before {
+  content: ''; position: absolute; inset: -1px; border-radius: inherit; padding: 1px;
+  background: radial-gradient(var(--spot-r, 110px) circle at var(--spot-x, -999px) var(--spot-y, -999px),
+    var(--accent), color-mix(in oklab, var(--accent) 45%, transparent) 40%, transparent 75%) fixed;
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor; mask-composite: exclude;
+}
+.opt-d .spot-ring { inset: 0; }
+.opt-d .spot-layer .ksv-key.locked::before, .opt-d .spot-layer .ksv-key.maxed::before, .opt-d .spot-layer .ksv-touchid::before { display: none; }
+
+/* export / copy with nothing to export (keycaps, no key selected) */
+.opt-d .rail-foot .go:disabled { opacity: .42; cursor: not-allowed; filter: none; }
+
+/* ===== small screens: the app keeps its desktop width and scrolls sideways; say so once ===== */
+.small-screen { display: none; }
+@media (max-width: 767px) {
+  .small-screen {
+    display: flex; align-items: center; gap: 12px; position: fixed; top: 0; left: 0; right: 0; z-index: 10;
+    padding: 12px 16px; background: #14161a; color: #e6eaef; border-bottom: 1px solid #23262d;
+    font: 500 13px/1.4 'JetBrains Mono', ui-monospace, monospace;
+  }
+  .small-screen span { flex: 1; }
+  .small-screen button { flex: none; display: grid; place-items: center; width: 32px; height: 32px; border: 0; border-radius: 8px; background: #23262d; color: inherit; font-size: 16px; cursor: pointer; }
+}

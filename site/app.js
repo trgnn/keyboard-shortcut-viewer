@@ -22,14 +22,8 @@
     caom: ['ctrl', 'opt', 'cmd', 'rcmd', 'ropt'],
     scaom: ['ctrl', 'opt', 'cmd', 'rcmd', 'ropt', 'lshift', 'rshift']
   };
-  // per-background paint options handed to the exporters.
-  // keyBg comes from the shared solid key colour (KSV.KEYBG) so it can't drift from the preview.
-  const KEYBG = KSV.KEYBG;
-  const EXPORT_BG = {
-    dark: { bg: '#0a0b0d', keyBg: KEYBG, keyBorder: 'rgba(255,255,255,.08)', plus: '#5a616b' },
-    light: { bg: '#f3f0f8', keyBg: KEYBG, keyBorder: 'rgba(255,255,255,.08)', plus: '#9aa094' },
-    trans: { bg: 'transparent', keyBg: KEYBG, keyBorder: 'rgba(255,255,255,.12)', plus: '#5a616b' }
-  };
+  // canvas and export colours come from the engine's theme table (KSV.THEMES): dark / light
+  const THEMES = KSV.THEMES;
 
   /* pick legible on-accent text by real (WCAG) contrast ratio */
   function fgFor(hex) {
@@ -47,12 +41,11 @@
   const $ = (id) => document.getElementById(id);
   const root = $('app');
   const kbMount = $('kbMount');
+  const panel = kbMount.closest('.panel');
   const preview = $('preview');
-  const sizeCap = $('sizeCap');
   const scaleRange = $('scaleRange');
   const scaleVal = $('scaleVal');
   const exportBtn = $('exportBtn');
-  const previewLbl = $('previewLbl');
   const copyBtn = $('copyBtn');
   // every declared rel="icon" link (.ico + .svg). The static hrefs in the HTML
   // are what crawlers/link-previewers read; in a live tab setFavicon() swaps
@@ -65,36 +58,48 @@
   const state = { sel: new Set(['cmd', 'k']), dbl: new Set(), lr: false, hyper: false, locked: new Set() };
   // UI state
   // PNG by default: crisp key edges and labels, and the only raster format the clipboard takes.
-  // dim: grey out the keys that can't be added, in the keyboard export and its preview
-  const ui = { layout: 'board', bg: 'dark', ext: 'png', scale: 2, dim: true, accent: ACCENTS[0], hyper: 'off', lr: false };
+  // frame / grid: the page's keyboard case and background grid, drawn in the keyboard export
+  // surface: solid keys and case, or the page's translucent ones
+  // theme: dark / light, for the keyboard, the frame and the whole page; bg: filled or transparent
+  // defaults = the page's own look, so the canvas and the export start out identical
+  const ui = { layout: 'board', theme: 'dark', bg: 'fill', ext: 'png', scale: 2, frame: true, grid: true, surface: 'translucent', accent: ACCENTS[0], hyper: 'off', lr: false };
 
   /* ---- persistence: remember UI options across reloads (NOT the key selection) ---- */
   const STORE = 'ksv-ui-v1';
+  let saved = '';
   function persist() {
-    try {
-      localStorage.setItem(STORE, JSON.stringify({
-        layout: ui.layout, bg: ui.bg, ext: ui.ext, scale: ui.scale, dim: ui.dim, accent: ui.accent, hyper: ui.hyper, lr: ui.lr
-      }));
-    } catch (e) { /* storage unavailable (private mode, etc.) — just don't persist */ }
+    const json = JSON.stringify({
+      layout: ui.layout, theme: ui.theme, bg: ui.bg, ext: ui.ext, scale: ui.scale, frame: ui.frame, grid: ui.grid,
+      surface: ui.surface, accent: ui.accent, hyper: ui.hyper, lr: ui.lr
+    });
+    if (json === saved) return; // a key click changes nothing here: no write
+    try { localStorage.setItem(STORE, json); saved = json; }
+    catch (e) { /* storage unavailable (private mode, etc.) — just don't persist */ }
   }
   function restore() {
     let s;
     try { s = JSON.parse(localStorage.getItem(STORE) || '{}'); } catch (e) { return; }
     if (!s || typeof s !== 'object') return;
     if (LAYOUTS.includes(s.layout)) ui.layout = s.layout;
-    if (['dark', 'light', 'trans'].includes(s.bg)) ui.bg = s.bg;
+    if (s.theme in THEMES) ui.theme = s.theme;
+    if (['fill', 'trans'].includes(s.bg)) ui.bg = s.bg;
+    // v1.1 kept one setting, dark / light / trans: theme + background since
+    else if (s.bg === 'light' || s.bg === 'dark') { ui.theme = s.bg; ui.bg = 'fill'; }
+    else if (s.bg === 'trans') { ui.theme = 'dark'; ui.bg = 'trans'; }
     if (FORMATS.includes(s.ext)) ui.ext = s.ext;
     if (typeof s.scale === 'number' && s.scale >= SCALE.min && s.scale <= SCALE.max) ui.scale = s.scale;
     if (ACCENTS.includes(s.accent)) ui.accent = s.accent;
     if (['off', 'caom', 'scaom'].includes(s.hyper)) ui.hyper = s.hyper;
     if (typeof s.lr === 'boolean') ui.lr = s.lr;
-    if (typeof s.dim === 'boolean') ui.dim = s.dim;
+    if (typeof s.frame === 'boolean') ui.frame = s.frame;
+    if (typeof s.grid === 'boolean') ui.grid = s.grid;
+    if (['solid', 'translucent'].includes(s.surface)) ui.surface = s.surface;
     // re-apply the guards the change handlers enforce, in case of an invalid saved combo
-    if (ui.ext === 'jpg' && ui.bg === 'trans') ui.bg = 'dark';
+    if (ui.ext === 'jpg' && ui.bg === 'trans') ui.bg = 'fill';
   }
 
   /* ---- small helpers ---- */
-  const el = (tag, cls, html) => { const n = document.createElement(tag); if (cls) n.className = cls; if (html != null) n.innerHTML = html; return n; };
+  const el = KSV.el;
   const kbEl = () => kbMount.querySelector('.ksv-kb');
 
   // (re)build a segmented control. options: [value, label, optDisabled?, ariaLabel?][]
@@ -132,23 +137,40 @@
 
   /* ---- export preview (keeps preview and export visually identical) ---- */
   const effBg = () => ui.ext === 'svg' ? 'trans' : ui.bg; // SVG is always transparent
+  const theme = () => THEMES[ui.theme];
   function updatePreview() {
-    applyHyper();
-    preview.className = 'prev-card bg-' + effBg();
+    preview.className = 'prev-card' + (effBg() === 'trans' ? ' is-trans' : '');
     preview.style.setProperty('--accent', ui.accent);
     preview.style.setProperty('--onFg', fgFor(ui.accent));
     preview.innerHTML = '';
     if (ui.layout === 'board') {
+      // the export itself, scaled to the card: same margin, key geometry, frame and grid,
+      // all from the engine's BOARD / FRAME / GRID (labels size from --keyH via KEYSPEC)
       preview.classList.add('is-board');
-      const board = KSV.buildBoardPreview(state, { dim: ui.dim });
-      preview.appendChild(board);
-      const aw = Math.max(120, preview.clientWidth - 28);
-      const g = Math.max(2, aw / 1100 * 7);
-      const colW = (aw - (COLS - 1) * g) / COLS;
-      const kh = Math.max(12, 4 * colW + 3 * g); // square letter keys, matching the export
-      board.style.setProperty('--keyH', kh + 'px');
-      board.style.setProperty('--g', g + 'px');
-      // labels size from --keyH via the shared KEYSPEC ratios (no per-view font tuning)
+      const d = KSV.boardDims(1), B = KSV.BOARD, F = KSV.FRAME, G = KSV.GRID;
+      const k = Math.max(120, preview.clientWidth) / d.W, px = (v) => v * k + 'px';
+      const art = el('div', 'prev-board');
+      Object.assign(art.style, { width: px(d.W), height: px(d.H), padding: px(B.pad) });
+      if (ui.grid) {
+        art.classList.add('with-grid');
+        art.style.setProperty('--grid-step', px(G.step));
+        const line = Math.max(0.5, G.line * k), g0 = KSV.gridOrigin(d);
+        art.style.setProperty('--grid-line', line + 'px');
+        art.style.backgroundPosition = (g0.x * k - line / 2) + 'px ' + (g0.y * k - line / 2) + 'px';
+        art.style.setProperty('--grid-color', theme().grid);
+      }
+      if (ui.frame) {
+        const f = el('div', 'prev-frame');
+        const r = KSV.frameRect(d);
+        Object.assign(f.style, { left: px(r.x), top: px(r.y), width: px(r.w), height: px(r.h), borderRadius: px(F.radius), background: theme().frame[ui.surface], borderColor: theme().frame.stroke });
+        if (ui.surface === 'translucent') f.style.backdropFilter = 'blur(' + px(F.blur) + ')';
+        art.appendChild(f);
+      }
+      const board = KSV.buildBoardPreview(state, { keyBg: theme().key[ui.surface] });
+      board.style.setProperty('--keyH', px(d.keyH));
+      board.style.setProperty('--g', px(B.g));
+      art.appendChild(board);
+      preview.appendChild(art);
       updateCapsKey(board); // reflect the hyperkey glyph in the preview too
     } else {
       preview.classList.remove('is-board');
@@ -165,29 +187,62 @@
   function updateMeta() {
     const svg = ui.ext === 'svg', boardLike = ui.layout === 'board';
     const out = boardLike ? KSV.boardSize(svg ? 1 : ui.scale) : KSV.exportSize(state, svg ? 1 : ui.scale);
-    sizeCap.textContent = svg ? 'vector' : (out ? out.w + ' × ' + out.h + ' px' : '—');
-    // the scale only applies to raster output
+    // the scale only applies to raster output; its readout is the output's resolution
     scaleRange.disabled = svg;
     scaleRange.closest('.scale-row').classList.toggle('disabled', svg);
     scaleRange.value = ui.scale;
     scaleRange.style.setProperty('--fill', (ui.scale - SCALE.min) / (SCALE.max - SCALE.min) * 100 + '%');
-    scaleVal.textContent = ui.scale + '×';
-    // the format is already chosen in the output group: the preview label names it, the button doesn't
-    previewLbl.textContent = '// preview ' + ui.ext;
+    scaleVal.textContent = svg ? 'vector' : (out ? out.w + ' × ' + out.h : '—');
+    scaleRange.setAttribute('aria-valuetext', ui.scale + '×' + (out && !svg ? ', ' + out.w + ' by ' + out.h + ' pixels' : ''));
     exportBtn.innerHTML = KSV.icon('download') + 'export';
+    // keycaps with nothing selected: there's no image to make, so no export or copy
+    const empty = ui.layout !== 'board' && !out;
+    exportBtn.disabled = empty;
+    exportBtn.title = empty ? 'Select keys to export' : '';
     // browsers only put PNG and SVG on the clipboard: copy is off for jpg / webp
     copyBtn.innerHTML = KSV.icon('copy') + 'copy';
-    copyBtn.disabled = !COPYABLE.has(ui.ext);
+    copyBtn.disabled = empty || !COPYABLE.has(ui.ext);
     copyBtn.title = ui.ext === 'svg' ? 'Copy the SVG (image and code)'
       : ui.ext === 'png' ? 'Copy the PNG' : 'Browsers can’t put a ' + ui.ext.toUpperCase() + ' on the clipboard: export it, or pick PNG';
+  }
+
+  /* ---- the canvas shows the export settings: background, grid, frame, surface ----
+     Keyboard layout only; with keycaps (where frame, grid and surface don't apply) the
+     canvas keeps the page's default frame, grid and surface. Colours come from KSV.THEMES. */
+  function applyCanvas() {
+    const T = theme(), board = ui.layout === 'board';
+    const frame = board ? ui.frame : true, grid = board ? ui.grid : true;
+    const glass = (board ? ui.surface : 'translucent') === 'translucent';
+    // theme: the page's chrome switches with the class, the canvas and keys with these variables
+    root.classList.toggle('theme-light', ui.theme === 'light');
+    const vars = {
+      '--canvas-bg': T.bg, '--check-base': T.checkBase, '--check': T.check, '--grid-color': T.grid,
+      '--frame-stroke': T.frame.stroke, '--keyFg': T.keyFg, '--keyBorder': T.keyLine,
+      '--chipBg': T.key.solid, '--chipFg': T.keyFg, '--chipBorder': T.keyLine, '--muted': T.plus,
+      '--accent-ink': KSV.ink(ui.accent, ui.theme)
+    };
+    Object.keys(vars).forEach((k) => root.style.setProperty(k, vars[k]));
+    document.documentElement.style.background = T.bg;
+    root.classList.toggle('cv-trans', effBg() === 'trans');
+    root.classList.toggle('cv-no-grid', !grid);
+    const kb = kbEl();
+    if (kb) kb.style.setProperty('--keyBg', T.key[glass ? 'translucent' : 'solid']);
+    const blur = frame && glass ? 'blur(' + KSV.FRAME.blur + 'px)' : 'none';
+    Object.assign(panel.style, {
+      background: frame ? T.frame[glass ? 'translucent' : 'solid'] : 'transparent',
+      borderColor: frame ? T.frame.stroke : 'transparent',
+      backdropFilter: blur, webkitBackdropFilter: blur
+    });
   }
 
   // full refresh after any state change (no keyboard rebuild)
   function refresh() {
     applyHyper();
+    applyCanvas();
     const kb = kbEl();
     if (kb) KSV.paint(kb, state);
     updateCapsKey();
+    syncSpotLayer();
     updatePreview();
     updateMeta();
     persist();
@@ -206,14 +261,31 @@
   function renderExt() {
     renderSeg($('extSeg'), FORMATS.map((f) => [f, f, !encodable.has(f)]), ui.ext, false, changeExt);
   }
-  // greyed-out keys only exist on the full keyboard
-  function renderDim() {
-    renderSeg($('dimSeg'), [['on', 'dimmed', false, 'unavailable keys dimmed'], ['off', 'normal', false, 'unavailable keys drawn normally']],
-      ui.dim ? 'on' : 'off', ui.layout !== 'board', (v) => { ui.dim = v === 'on'; renderDim(); refresh(); });
+  // the page's case and grid, drawn in the keyboard export: two independent toggle pills
+  // (not a segmented control, which reads as one choice among several)
+  function renderShow() {
+    const c = $('showSeg'), off = ui.layout !== 'board';
+    c.classList.toggle('disabled', off);
+    c.innerHTML = '';
+    [['frame', 'frame', 'keyboard frame'], ['grid', 'grid', 'background grid']].forEach(([key, label, aria]) => {
+      const b = el('button', ui[key] ? 'on' : '', label);
+      b.setAttribute('aria-pressed', ui[key]);
+      b.setAttribute('aria-label', aria);
+      if (off) b.disabled = true; else b.onclick = () => { ui[key] = !ui[key]; renderShow(); refresh(); };
+      c.appendChild(b);
+    });
   }
+  // solid or translucent keys and case: the keyboard export only
+  function renderSurface() {
+    renderSeg($('surfaceSeg'), [['solid', 'solid', false, 'solid keys and frame'], ['translucent', 'translucent', false, 'translucent keys and frame, like the page']],
+      ui.surface, ui.layout !== 'board', (v) => { ui.surface = v; renderSurface(); refresh(); });
+  }
+  function renderTheme() {
+    renderSeg($('themeSeg'), [['dark', 'dark'], ['light', 'light']], ui.theme, false, (v) => { ui.theme = v; renderTheme(); refresh(); });
+  }
+  // SVG is always transparent; JPG can't be
   function renderBgSeg() {
-    const locked = ui.ext === 'svg';
-    renderSeg($('bgSeg'), [['dark', 'dark'], ['light', 'light'], ['trans', 'alpha', ui.ext === 'jpg']], effBg(), locked, setBg);
+    renderSeg($('bgSeg'), [['fill', 'filled', false, 'filled background'], ['trans', 'transparent', ui.ext === 'jpg', 'transparent background']], effBg(), ui.ext === 'svg', setBg);
   }
   function renderSwatches() {
     const c = $('accentSwatches');
@@ -232,14 +304,14 @@
   const LAYOUTS = ['board', 'keycaps'];
   function changeLayout(v) {
     ui.layout = v;
-    renderLayout(); renderDim(); refresh();
+    renderLayout(); renderShow(); renderSurface(); refresh();
   }
   function cycleLayout() {
     changeLayout(LAYOUTS[(LAYOUTS.indexOf(ui.layout) + 1) % LAYOUTS.length]);
   }
   function changeExt(v) {
     ui.ext = v;
-    if (v === 'jpg' && ui.bg === 'trans') ui.bg = 'dark';
+    if (v === 'jpg' && ui.bg === 'trans') ui.bg = 'fill';
     renderExt(); renderBgSeg(); refresh();
   }
   function setBg(v) { ui.bg = v; renderBgSeg(); refresh(); }
@@ -276,14 +348,22 @@
   // everything the engine needs to render the output configured in the rail
   function exportOpts() {
     applyHyper();
-    const bgKey = effBg();
-    return Object.assign({}, EXPORT_BG[bgKey], {
-      layout: ui.layout, hyper: ui.accent, hyperFg: fgFor(ui.accent), accent: ui.accent, format: ui.ext, scale: ui.scale, dim: ui.dim,
-      // filename hints: which view and which background the user picked (alpha = transparent)
-      bgName: bgKey === 'trans' ? 'alpha' : bgKey
-    });
+    const T = theme(), trans = effBg() === 'trans';
+    return {
+      layout: ui.layout, format: ui.ext, scale: ui.scale, frame: ui.frame, grid: ui.grid,
+      accent: ui.accent, hyper: ui.accent, hyperFg: fgFor(ui.accent), accentInk: KSV.ink(ui.accent, ui.theme),
+      // theme colours (KSV.THEMES); JPG has no alpha, so a transparent JPG falls back to the theme's fill
+      bg: trans ? 'transparent' : T.bg, jpgBg: T.bg, badgeRing: T.bg, gridColor: T.grid,
+      fg: T.keyFg, keyBorder: T.keyBorder, plus: T.plus, sub: T.sub,
+      // the surface option is the keyboard's; keycaps stay solid
+      keyBg: T.key[ui.layout === 'board' ? ui.surface : 'solid'],
+      frameFill: T.frame[ui.surface], frameStroke: T.frame.stroke,
+      frameBlur: ui.surface === 'translucent' ? KSV.FRAME.blur : 0,
+      // filename hints: theme, and alpha when transparent
+      bgName: ui.theme + (trans ? '-alpha' : '')
+    };
   }
-  function exportNow() { KSV.exportImage(state, exportOpts()); }
+  function exportNow() { if (!exportBtn.disabled) KSV.exportImage(state, exportOpts()); }
   // copy the same image to the clipboard; the button's icon confirms for a moment
   let copyTimer;
   function copyNow() {
@@ -311,29 +391,79 @@
     kb.style.setProperty('--keyH', unit + 'px'); // fn keys share this height (square, like the letters)
   }
 
+  /* ---- the border light's layer: an empty copy of the keyboard over it (styles.css) ----
+     Same keys, same geometry, no labels: only their border rings show, lit near the cursor.
+     Rebuilt with the keyboard, its classes synced on every refresh (locked / maxed keys stay
+     dark), and laid over the real keyboard after each layout pass. */
+  let spot = null;
+  function buildSpotLayer() {
+    spot = el('div', 'spot-layer');
+    spot.setAttribute('aria-hidden', 'true');
+    spot.appendChild(el('div', 'spot-ring'));
+    spot.appendChild(kbEl().cloneNode(true));
+    spot.querySelector('.ksv-kb').inert = true;
+    panel.appendChild(spot);
+  }
+  function syncSpotLayer() {
+    if (!spot) return;
+    const real = kbEl(), copy = spot.querySelector('.ksv-kb');
+    copy.style.cssText = real.style.cssText;
+    const r = real.getBoundingClientRect(), o = spot.getBoundingClientRect(); // sub-pixel exact
+    Object.assign(copy.style, { left: r.left - o.left + 'px', top: r.top - o.top + 'px', width: r.width + 'px' });
+    const keys = real.querySelectorAll('.ksv-key'), ghosts = copy.querySelectorAll('.ksv-key');
+    keys.forEach((k, i) => { if (ghosts[i]) ghosts[i].className = k.className; });
+  }
+
+  /* ---- the background grid lines up with the keyboard case ----
+     The case is sized to whole grid cells (+1 px so its right and bottom borders land on a
+     line too): the content column snaps its width down, the case pads its height up, split
+     top and bottom. Then the grid's origin moves onto the case's top-left corner. */
+  function alignToGrid() {
+    const cell = KSV.GRID.step, stage = root.querySelector('.stage'), cs = getComputedStyle(stage);
+    const avail = Math.min(1180, stage.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight));
+    root.style.setProperty('--content-max', Math.floor((avail - 1) / cell) * cell + 1 + 'px');
+    fitKeys();
+    panel.style.paddingTop = panel.style.paddingBottom = '';
+    const pad = parseFloat(getComputedStyle(panel).paddingTop), h = panel.getBoundingClientRect().height;
+    const extra = Math.ceil((h - 1) / cell) * cell + 1 - h;
+    panel.style.paddingTop = panel.style.paddingBottom = pad + extra / 2 + 'px';
+    const a = root.getBoundingClientRect(), p = panel.getBoundingClientRect();
+    // whole pixels, so the 1 px grid lines stay crisp
+    const mod = (v) => ((Math.round(v) % cell) + cell) % cell;
+    root.style.setProperty('--grid-x', mod(p.left - a.left) + 'px');
+    root.style.setProperty('--grid-y', mod(p.top - a.top) + 'px');
+    syncSpotLayer();
+  }
+
   /* ---- cursor glow on the grid background behind the keyboard ----
      Eases toward the cursor and stops once settled: the loop only runs while something
      moves, and restarts on the next mouse move. The variables go on the two elements
      that read them (.grid-lit for the glow, .stage for the selected keys' shadow), not
-     on the app root, so a frame doesn't restyle the whole page. Off with reduced motion. */
+     on the app root, so a frame doesn't restyle the whole page. With reduced motion the
+     glow still follows the cursor, but directly: no easing, no grid drift, no size pulse. */
   function startGlow() {
-    if (window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const calm = !!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches);
     const lit = root.querySelector('.grid-lit'), stage = root.querySelector('.stage');
     let tx = 50, ty = 50, cx = 50, cy = 50, sz = 90, vx = 0, vy = 0, ltx = 50, lty = 50, raf = 0;
     const clamp = (v) => Math.max(-7, Math.min(7, v));
     const tick = () => {
+      if (calm) { cx = ltx = tx; cy = lty = ty; }
       const dvx = tx - ltx, dvy = ty - lty; ltx = tx; lty = ty;
       vx += (dvx - vx) * 0.18; vy += (dvy - vy) * 0.18;
       cx += (tx - cx) * 0.1; cy += (ty - cy) * 0.1;
-      const gap = Math.hypot(tx - cx, ty - cy), target = 80 + Math.min(gap * 11, 170);
+      const gap = Math.hypot(tx - cx, ty - cy), target = calm ? 90 : 80 + Math.min(gap * 11, 170);
+      if (calm) sz = target;
       sz += (target - sz) * 0.08;
       lit.style.setProperty('--gx', cx + '%');
       lit.style.setProperty('--gy', cy + '%');
       lit.style.setProperty('--glow-r', sz + 'px');
       lit.style.setProperty('--vx', clamp(vx * 0.7) + 'px');
       lit.style.setProperty('--vy', clamp(vy * 0.7) + 'px');
-      stage.style.setProperty('--glow-x', clamp((cx - 50) / 50 * 7).toFixed(2) + 'px');
-      stage.style.setProperty('--glow-y', clamp((cy - 50) / 50 * 7).toFixed(2) + 'px');
+      // the same light on the case's and keys' hairlines, in viewport px (see styles.css)
+      const a = root.getBoundingClientRect();
+      panel.style.setProperty('--spot-x', a.left + cx / 100 * a.width + 'px');
+      panel.style.setProperty('--spot-y', a.top + cy / 100 * a.height + 'px');
+      panel.style.setProperty('--spot-r', sz * 1.2 + 'px');
       const settled = gap < 0.05 && Math.abs(vx) < 0.01 && Math.abs(vy) < 0.01 && Math.abs(target - sz) < 0.5;
       raf = settled ? 0 : requestAnimationFrame(tick);
     };
@@ -342,9 +472,10 @@
       const r = root.getBoundingClientRect();
       tx = (e.clientX - r.left) / r.width * 100;
       ty = (e.clientY - r.top) / r.height * 100;
+      panel.style.setProperty('--spot-o', 1);
       wake();
     });
-    root.addEventListener('mouseleave', () => { tx = 50; ty = 50; wake(); });
+    root.addEventListener('mouseleave', () => { tx = 50; ty = 50; panel.style.setProperty('--spot-o', 0); wake(); });
     wake();
   }
 
@@ -355,19 +486,45 @@
       const t = e.target;
       if (t && t.matches && t.matches('input, textarea, [contenteditable]')) return;
       if (!e.shiftKey || e.metaKey || e.ctrlKey || e.altKey) return;
-      if (e.code === 'KeyD') { e.preventDefault(); exportNow(); }
-      else if (e.code === 'KeyC') { e.preventDefault(); copyNow(); }
-      else if (e.code === 'KeyR') { e.preventDefault(); reset(); }
-      else if (e.code === 'KeyL') { e.preventDefault(); cycleLayout(); }
+      // the key's label, not its position, so ⇧D is D on QWERTY, AZERTY, Dvorak or Colemak alike
+      const key = (e.key || '').toLowerCase();
+      if (key === 'd') { e.preventDefault(); exportNow(); }
+      else if (key === 'c') { e.preventDefault(); copyNow(); }
+      else if (key === 'r') { e.preventDefault(); reset(); }
+      else if (key === 'l') { e.preventDefault(); cycleLayout(); }
     });
   }
 
-  /* Footer milestone version, from config.js (KSV_VERSION) — the only source: the HTML
-     label is empty, so it never shows a stale version, and stays hidden if config.js is absent. */
+  /* Footer version tag, from config.js — the only source: the HTML is empty, so it never
+     shows a stale version, and stays hidden if config.js is absent. With archived versions
+     (KSV_ARCHIVE) the tag opens a menu, upward: the current version, then each archive,
+     which opens in a new tab so the current one stays where it is. */
   function renderVersion() {
     if (typeof KSV_VERSION === 'undefined') return;
-    const el = document.querySelector('.cf-ver');
-    if (el) el.textContent = KSV_VERSION;
+    const wrap = document.querySelector('.ver-menu'), btn = $('verBtn'), list = $('verList');
+    const archive = typeof KSV_ARCHIVE !== 'undefined' ? KSV_ARCHIVE : [];
+    wrap.hidden = false;
+    btn.innerHTML = KSV_VERSION + (archive.length ? KSV.icon('chevron') : '');
+    btn.setAttribute('aria-label', 'version ' + KSV_VERSION + (archive.length ? ', other versions' : ''));
+    if (!archive.length) { btn.disabled = true; return; }
+    list.innerHTML = '<span class="ver-item is-current" role="menuitem" aria-current="true" tabindex="-1">' + KSV_VERSION + '<em>current</em></span>' +
+      archive.map((v) => '<a class="ver-item" role="menuitem" tabindex="-1" href="' + v.href + '" target="_blank" rel="noopener">' + v.version + '<em>' + v.label + KSV.icon('external') + '</em></a>').join('');
+    const items = () => [...list.querySelectorAll('.ver-item')];
+    const open = (on, focusFirst) => {
+      list.hidden = !on; btn.setAttribute('aria-expanded', on);
+      if (on && focusFirst) items()[0].focus();
+    };
+    btn.onclick = () => open(list.hidden, false);
+    btn.onkeydown = (e) => { if (e.key === 'ArrowUp' || e.key === 'ArrowDown') { e.preventDefault(); open(true, true); } };
+    list.onkeydown = (e) => {
+      const all = items(), i = all.indexOf(document.activeElement);
+      if (e.key === 'Escape') { open(false); btn.focus(); }
+      else if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+        e.preventDefault();
+        all[(i + (e.key === 'ArrowDown' ? 1 : all.length - 1)) % all.length].focus();
+      }
+    };
+    document.addEventListener('click', (e) => { if (!wrap.contains(e.target)) open(false); });
   }
 
   // static markup asks for glyphs with <i data-icon="name"></i>; fill them from the shared ICONS
@@ -385,18 +542,21 @@
 
     // mount the interactive keyboard; onChange fires on every click
     kbMount.appendChild(KSV.buildKeyboard(state, refresh));
+    buildSpotLayer();
 
-    renderHyper(); renderLr(); renderLayout(); renderExt(); renderBgSeg(); renderDim(); renderSwatches();
+    renderHyper(); renderLr(); renderLayout(); renderExt(); renderTheme(); renderBgSeg(); renderShow(); renderSurface(); renderSwatches();
     renderVersion();
     renderIcons();
     $('resetBtn').onclick = reset;
     exportBtn.onclick = exportNow;
+    $('smallScreenClose').onclick = () => $('smallScreenClose').parentNode.remove();
     copyBtn.onclick = copyNow;
     Object.assign(scaleRange, { min: SCALE.min, max: SCALE.max, step: SCALE.step });
     scaleRange.oninput = () => setScale(+scaleRange.value);
 
-    fitKeys();
-    new ResizeObserver(fitKeys).observe(kbMount);
+    alignToGrid();
+    new ResizeObserver(alignToGrid).observe(root.querySelector('.stage'));
+    document.fonts.ready.then(alignToGrid); // the title's font can move the case
 
     startGlow();
     bindHotkeys();
