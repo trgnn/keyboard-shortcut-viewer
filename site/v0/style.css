@@ -1,0 +1,354 @@
+/* style.css — minimaliste : traits fins, pas d'ombre ni de relief, police système. */
+
+:root {
+  --fg: #222;
+  --muted: #777;
+  --border: #ddd;
+  --accent: #2f6df6;
+  --error: #c0392b;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  color: var(--fg);
+  background: #fafafa;
+  line-height: 1.5;
+}
+
+main {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 2.5rem 1.5rem;
+}
+
+h1 {
+  font-size: 1.4rem;
+  font-weight: 600;
+  margin: 0 0 0.25rem;
+}
+
+.hint {
+  color: var(--muted);
+  margin: 0 0 1.5rem;
+  font-size: 0.9rem;
+}
+
+code {
+  background: #eee;
+  padding: 0.05em 0.4em;
+  border-radius: 4px;
+  font-size: 0.85em;
+}
+
+/* --- Clavier cliquable --- */
+.keyboard-wrapper {
+  position: relative;
+  margin-bottom: 1rem;
+  border-radius: 8px;
+  outline: none;
+}
+
+.keyboard-wrapper:focus {
+  box-shadow: 0 0 0 2px var(--accent);
+}
+
+.keyboard-wrapper .keyboard {
+  margin-bottom: 0;
+}
+
+.reset-btn {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+}
+
+.keyboard {
+  padding: 1rem;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow-x: auto;
+}
+
+.keyboard svg {
+  max-width: 100%;
+  height: auto;
+  display: block;
+}
+
+/* Chaque touche du clavier interactif. */
+.keyboard .key {
+  cursor: pointer;
+}
+
+.keyboard .key:hover rect {
+  stroke: var(--accent);
+  stroke-width: 2;
+}
+
+.keyboard .key:focus {
+  outline: none;
+}
+
+.keyboard .key:focus rect {
+  stroke: var(--accent);
+  stroke-width: 2;
+}
+
+/* Touche grisée (non cliquable dans la modal hyperkey). */
+.keyboard .key.is-disabled {
+  cursor: default;
+  pointer-events: none;
+}
+
+/* Touche activée passivement par la hyperkey (non cliquable). */
+.keyboard .key.is-implied {
+  cursor: default;
+  pointer-events: none;
+}
+
+/* --- Barre de réglages (hyperkey + côté des modificateurs) --- */
+.settings-bar {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  margin-bottom: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.hyperkey-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.toggle-label {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.9rem;
+  color: var(--fg);
+  cursor: pointer;
+  user-select: none;
+}
+
+.toggle-label input[type="checkbox"] {
+  width: 1em;
+  height: 1em;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
+.hyperkey-status {
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+/* --- Modal --- */
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+}
+
+.overlay[hidden] { display: none; }
+
+.modal {
+  background: #fff;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  width: min(96vw, 960px);
+  max-height: 90vh;
+  overflow-y: auto;
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.modal-header h2 {
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin: 0 0 0.25rem;
+}
+
+.modal-header p {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.modal-keyboard {
+  margin-bottom: 0;
+}
+
+.modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+
+.btn-primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+.btn-primary:hover:not(:disabled) {
+  color: #fff;
+  opacity: 0.9;
+  border-color: var(--accent);
+}
+
+.sub {
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+  margin: 0;
+}
+
+.placeholder {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+/* --- Preview panel --- */
+.preview-panel {
+  position: relative;
+  margin: 2rem 0 1.25rem;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.preview-float {
+  position: absolute;
+  top: -1.6rem;
+  left: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.download-btn {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+}
+
+.shortcut-chips {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+}
+
+.key-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #1a1a1a;
+  color: #fff;
+  border-radius: 6px;
+  padding: 0.2em 0.55em;
+  font-size: 1rem;
+  font-weight: 500;
+  line-height: 1.4;
+  min-width: 2em;
+}
+
+.key-chip--action {
+  background: #ebebeb;
+  color: #555;
+}
+
+.chip-side {
+  font-size: 0.55em;
+  font-weight: 700;
+  margin-left: 0.2em;
+  opacity: 0.6;
+  vertical-align: super;
+  line-height: 0;
+}
+
+.chip-sep {
+  color: var(--muted);
+  font-size: 0.8rem;
+  padding: 0 0.15rem;
+}
+
+.icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: #fff;
+  color: var(--fg);
+  cursor: pointer;
+}
+
+.icon-btn:hover:not(:disabled) {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.icon-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.preview-panel .output {
+  padding: 1.5rem;
+  overflow-x: auto;
+  border: none;
+  margin: 0;
+  border-radius: 0;
+}
+
+button {
+  padding: 0.5rem 1rem;
+  font-size: 0.95rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: #fff;
+  color: var(--fg);
+  cursor: pointer;
+}
+
+button:hover:not(:disabled) {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+#reset {
+  flex: none;
+}
+
+.output svg {
+  max-width: 100%;
+  height: auto;
+  display: block;
+}
+
+/* added when archiving: the note above the prototype */
+.archive-note { padding: .6rem 1.5rem; font-size: .85rem; color: var(--muted); background: #f0f0f0; border-bottom: 1px solid var(--border); text-align: center; }
+.archive-note a { color: var(--accent); }

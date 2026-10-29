@@ -2,7 +2,7 @@
 .claude/
 
 # local-only, not part of the deployed project
-v0/
+/v0/
 _ressources/
 
 # project notes / context — kept local, not published

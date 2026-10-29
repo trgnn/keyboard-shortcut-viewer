@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Keyboard Shortcut Viewer · v0 (prototype)</title>
+  <meta name="robots" content="noindex" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <!-- added when archiving: the prototype as it was (June 21, 2026), with a way back -->
+  <div class="archive-note">
+    Archived prototype, v0 (June 2026) · <a href="/">open the current version</a>
+  </div>
+  <main>
+    <h1>Keyboard Shortcut Viewer</h1>
+    <p class="hint">
+      Click keys to build your shortcut. Click again to deselect.
+      All active keys form the shortcut.
+    </p>
+
+    <div class="settings-bar">
+      <div class="hyperkey-bar">
+        <button type="button" id="hyperkey-btn">Configure hyperkey</button>
+        <span id="hyperkey-status" class="hyperkey-status"></span>
+      </div>
+      <label class="toggle-label">
+        <input type="checkbox" id="side-specific-toggle" />
+        Distinguish left/right modifiers
+      </label>
+    </div>
+
+    <div class="keyboard-wrapper" id="keyboard-wrapper" tabindex="0">
+      <div id="keyboard" class="keyboard"></div>
+      <button type="button" id="reset" title="Reset" class="icon-btn reset-btn">
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+          <path d="M12 7A5 5 0 1 1 7 2V0L4.5 2.5 7 5V3a4 4 0 1 0 4 4h1z" fill="currentColor"/>
+        </svg>
+      </button>
+    </div>
+
+    <div class="preview-panel">
+      <div class="preview-float">
+        <span class="sub preview-title">Preview</span>
+        <div id="shortcut-chips" class="shortcut-chips"></div>
+      </div>
+      <button type="button" id="download" disabled title="Download SVG" class="icon-btn download-btn">
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+          <path d="M7 1v8M4 6l3 3 3-3M1 12h12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </button>
+      <div id="output" class="output"></div>
+    </div>
+  </main>
+
+  <!-- Hyperkey modal -->
+  <div id="hyperkey-overlay" class="overlay" hidden>
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+      <div class="modal-header">
+        <h2 id="modal-title">Hyperkey — Caps Lock</h2>
+        <p>Select the modifiers activated when you press Caps Lock.
+           Other keys are grayed out.</p>
+      </div>
+      <div id="hyperkey-keyboard" class="keyboard modal-keyboard"></div>
+      <div class="modal-footer">
+        <button type="button" id="hyperkey-cancel">Cancel</button>
+        <button type="button" id="hyperkey-save" class="btn-primary">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>
