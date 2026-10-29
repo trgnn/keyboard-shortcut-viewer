@@ -43,7 +43,7 @@
     <div class="head">
       <span class="eyebrow">keyboard</span>
       <h1 class="title">Shortcut Viewer</h1>
-      <p class="lede">double-click a modifier for a double-tap · <b><i data-icon="shift"></i>R</b> clear keys · <b><i data-icon="shift"></i>L</b> change layout · <b><i data-icon="shift"></i>D</b> export · <b><i data-icon="shift"></i>C</b> copy</p>
+      <p class="lede">double-click a key for a double-tap · <b><i data-icon="shift"></i>R</b> clear keys · <b><i data-icon="shift"></i>L</b> change layout · <b><i data-icon="shift"></i>D</b> export · <b><i data-icon="shift"></i>C</b> copy</p>
     </div>
 
     <div class="kb-wrap">
@@ -56,16 +56,16 @@
           <span class="kbc-l">distinguish L/R</span>
           <div class="seg" id="lrSeg"></div>
         </div>
+        <div class="kbc">
+          <span class="kbc-l" title="several trigger keys in a row">combo mode</span>
+          <div class="seg" id="comboSeg"></div>
+        </div>
         <div class="kbc accent-kbc">
           <div class="swatches" id="accentSwatches"></div>
         </div>
       </div>
 
       <div class="panel"><div id="kbMount"></div></div>
-
-      <div class="kb-foot">
-        <button class="reset-btn" id="resetBtn"><i data-icon="reset"></i>clear keys</button>
-      </div>
     </div>
 
     <footer class="d-footer">
@@ -98,6 +98,14 @@
         <div class="opt-row">
           <span class="kbc-l">show</span>
           <div class="pills" id="showSeg"></div>
+        </div>
+        <div class="opt-row">
+          <span class="kbc-l" title="plus signs (keycaps)">plus (+)</span>
+          <div class="seg" id="plusSeg"></div>
+        </div>
+        <div class="opt-row">
+          <span class="kbc-l" title="selected look (keycaps)">glow</span>
+          <div class="seg" id="glowSeg"></div>
         </div>
       </section>
     </div>

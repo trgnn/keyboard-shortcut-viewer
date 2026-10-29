@@ -13,6 +13,8 @@
   const wait = (ms) => new Promise((r) => setTimeout(r, ms));
   const $ = (s) => document.querySelector(s);
   const key = (c) => $('#kbMount .ksv-key[data-code="' + c + '"]');
+  // clear keys: the ⇧R hotkey (no button since v1.3)
+  const clearKeys = () => window.dispatchEvent(new KeyboardEvent('keydown', { key: 'R', shiftKey: true }));
   const seg = (id, i) => $('#' + id + ' button:nth-child(' + i + ')').click();
   const range = $('#scaleRange');
   const setScale = (v) => { range.value = v; range.dispatchEvent(new Event('input')); };
@@ -53,29 +55,29 @@
   for (const layout of [1, 2]) {
     seg('layoutSeg', layout); await wait(30);
     const name = layout === 1 ? 'keyboard' : 'keycaps';
-    $('#resetBtn').click();
+    clearKeys();
     for (const c of ['ctrl', 'opt', 'cmd']) { key(c).click(); await wait(260); }
     key('k').click(); await wait(30);
     results[name + ' ⌃⌥⌘K'] = await compare();
-    $('#resetBtn').click();
+    clearKeys();
     key('lshift').click(); await wait(60); key('lshift').click(); await wait(300); // double-tap
     results[name + ' ⇧⇧'] = await compare();
-    $('#resetBtn').click();
+    clearKeys();
     key('F12').click(); await wait(30);
     results[name + ' F12'] = await compare();
   }
 
   // KSV-02: a click is applied at once, so reset / export right after it see it
   seg('layoutSeg', 1); seg('extSeg', 1); await wait(30);
-  $('#resetBtn').click(); await wait(300);
-  key('cmd').click(); $('#resetBtn').click(); await wait(300);
+  clearKeys(); await wait(300);
+  key('cmd').click(); clearKeys(); await wait(300);
   const afterReset = [...document.querySelectorAll('#kbMount .ksv-key.on')].map((k) => k.dataset.code);
   key('opt').click();
   const exported = (await download()).name;
   results.clickResolution = { afterReset, exportRightAfterClick: exported };
 
   // ⌃⌥⇧⌘ + fn; the keys left unavailable are greyed out on screen and in the preview alike
-  $('#resetBtn').click(); await wait(30);
+  clearKeys(); await wait(30);
   for (const c of ['fn', 'ctrl', 'opt', 'lshift', 'cmd']) { key(c).click(); await wait(260); }
   const held = [...document.querySelectorAll('#kbMount .ksv-key.on')].map((k) => k.dataset.code).filter((c) => !['rshift', 'rcmd', 'ropt'].includes(c));
   const maxed = (root) => [...document.querySelectorAll(root + ' .ksv-key.maxed')].map((k) => k.dataset.code).join();
@@ -108,7 +110,7 @@
   results.cspViolations = violations;
 
   // keycaps with nothing selected: nothing to export or copy
-  seg('layoutSeg', 2); $('#resetBtn').click(); await wait(30);
+  seg('layoutSeg', 2); clearKeys(); await wait(30);
   results.emptyKeycaps = { exportDisabled: $('#exportBtn').disabled, copyDisabled: $('#copyBtn').disabled };
   seg('layoutSeg', 1);
 

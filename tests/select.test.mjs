@@ -50,9 +50,22 @@ test('a single click after a double-tap starts over', () => {
   assert.deepEqual(sorted(click(s, 'lshift').sel), [], 'clicking the double-tapped key clears it');
 });
 
-test('double-tap only applies to modifiers', () => {
-  assert.deepEqual(sorted(S.select(state(), 'k', { double: true }).sel), ['k']);
+test('caps lock never double-taps', () => {
   assert.deepEqual(sorted(S.select(state(), 'caps', { double: true }).dbl), []);
+});
+
+test('a double-tapped trigger key keeps the modifiers, and toggles back to a single press', () => {
+  const s = { ...state(['cmd', 'j']), ...S.select(state(['cmd', 'j']), 'k', { double: true }) };
+  assert.deepEqual([sorted(s.sel), sorted(s.dbl)], [['cmd', 'k'], ['k']]);
+  assert.deepEqual(sorted(click(s, 'opt').sel), ['cmd', 'k', 'opt'], 'a modifier click adds to it');
+  const back = S.select(s, 'k', { double: true });
+  assert.deepEqual([sorted(back.sel), sorted(back.dbl)], [['cmd', 'k'], []]);
+});
+
+test('combo mode: a double-tapped trigger key joins the others', () => {
+  const st = state(['cmd', 'k'], { combo: true });
+  const s = S.select(st, 'g', { double: true });
+  assert.deepEqual([[...s.sel], sorted(s.dbl)], [['cmd', 'k', 'g'], ['g']]);
 });
 
 test('locked keys ignore clicks', () => {
@@ -64,4 +77,10 @@ test('the input state is left untouched', () => {
   const s = state(['cmd']);
   S.select(s, 'k');
   assert.deepEqual(sorted(s.sel), ['cmd']);
+});
+
+test('combo mode: trigger keys stack, in click order, and toggle off', () => {
+  const s = click(state([], { combo: true }), 'cmd', 'k', 's', 'tab');
+  assert.deepEqual([...s.sel], ['cmd', 'k', 's', 'tab']);
+  assert.deepEqual([...click({ ...s, combo: true }, 's').sel], ['cmd', 'k', 'tab']);
 });

@@ -62,7 +62,10 @@
   // surface: solid keys and case, or the page's translucent ones
   // theme: dark / light, for the keyboard, the frame and the whole page; bg: filled or transparent
   // defaults = the page's own look, so the canvas and the export start out identical
-  const ui = { layout: 'board', theme: 'dark', bg: 'fill', ext: 'png', scale: 2, frame: true, grid: true, surface: 'translucent', accent: ACCENTS[0], hyper: 'off', lr: false };
+  // keycaps only: plus, where the "+" goes (between all keys, before the trigger key, none);
+  // glow, which keys get the selected look (all, the modifiers, the trigger key, none)
+  const ui = { layout: 'board', theme: 'dark', bg: 'fill', ext: 'png', scale: 2, frame: true, grid: true, surface: 'translucent',
+    plus: 'key', glow: 'mods', accent: ACCENTS[0], hyper: 'off', lr: false, combo: false };
 
   /* ---- persistence: remember UI options across reloads (NOT the key selection) ---- */
   const STORE = 'ksv-ui-v1';
@@ -70,7 +73,7 @@
   function persist() {
     const json = JSON.stringify({
       layout: ui.layout, theme: ui.theme, bg: ui.bg, ext: ui.ext, scale: ui.scale, frame: ui.frame, grid: ui.grid,
-      surface: ui.surface, accent: ui.accent, hyper: ui.hyper, lr: ui.lr
+      surface: ui.surface, plus: ui.plus, glow: ui.glow, accent: ui.accent, hyper: ui.hyper, lr: ui.lr, combo: ui.combo
     });
     if (json === saved) return; // a key click changes nothing here: no write
     try { localStorage.setItem(STORE, json); saved = json; }
@@ -91,9 +94,13 @@
     if (ACCENTS.includes(s.accent)) ui.accent = s.accent;
     if (['off', 'caom', 'scaom'].includes(s.hyper)) ui.hyper = s.hyper;
     if (typeof s.lr === 'boolean') ui.lr = s.lr;
+    if (typeof s.combo === 'boolean') ui.combo = s.combo;
     if (typeof s.frame === 'boolean') ui.frame = s.frame;
     if (typeof s.grid === 'boolean') ui.grid = s.grid;
     if (['solid', 'translucent'].includes(s.surface)) ui.surface = s.surface;
+    if (['all', 'key', 'none'].includes(s.plus)) ui.plus = s.plus;
+    else if (typeof s.plus === 'boolean') ui.plus = s.plus ? 'all' : 'none'; // a pill before v1.3
+    if (['all', 'mods', 'key', 'none'].includes(s.glow)) ui.glow = s.glow;
     // re-apply the guards the change handlers enforce, in case of an invalid saved combo
     if (ui.ext === 'jpg' && ui.bg === 'trans') ui.bg = 'fill';
   }
@@ -173,20 +180,22 @@
       preview.appendChild(art);
       updateCapsKey(board); // reflect the hyperkey glyph in the preview too
     } else {
+      // keycaps: the preview is the export itself, drawn at the card's size (sharp on HiDPI)
       preview.classList.remove('is-board');
-      KSV.renderCaps(preview, state);
-      const row = preview.querySelector('.ksv-capsrow');
-      if (row) {
-        row.style.transform = '';
-        const avail = preview.clientWidth - 28, w = row.scrollWidth;
-        if (w > avail && avail > 0) row.style.transform = 'scale(' + avail / w + ')';
-      }
+      const o = Object.assign(exportOpts(), { format: 'png', scale: 1 });
+      const size = KSV.exportSize(state, 1, o);
+      if (!size) { preview.appendChild(el('div', 'ksv-empty', 'Select keys to build a shortcut')); return; }
+      const cssW = Math.min(preview.clientWidth, size.w), dpr = window.devicePixelRatio || 1;
+      const img = KSV.render(state, Object.assign(o, { scale: cssW / size.w * dpr }));
+      img.canvas.className = 'prev-caps';
+      img.canvas.style.width = cssW + 'px';
+      preview.appendChild(img.canvas);
     }
   }
 
   function updateMeta() {
     const svg = ui.ext === 'svg', boardLike = ui.layout === 'board';
-    const out = boardLike ? KSV.boardSize(svg ? 1 : ui.scale) : KSV.exportSize(state, svg ? 1 : ui.scale);
+    const out = boardLike ? KSV.boardSize(svg ? 1 : ui.scale) : KSV.exportSize(state, svg ? 1 : ui.scale, { plusMode: ui.plus });
     // the scale only applies to raster output; its readout is the output's resolution
     scaleRange.disabled = svg;
     scaleRange.closest('.scale-row').classList.toggle('disabled', svg);
@@ -210,15 +219,13 @@
      Keyboard layout only; with keycaps (where frame, grid and surface don't apply) the
      canvas keeps the page's default frame, grid and surface. Colours come from KSV.THEMES. */
   function applyCanvas() {
-    const T = theme(), board = ui.layout === 'board';
-    const frame = board ? ui.frame : true, grid = board ? ui.grid : true;
-    const glass = (board ? ui.surface : 'translucent') === 'translucent';
+    const T = theme(), frame = ui.frame, grid = ui.grid, glass = ui.surface === 'translucent';
     // theme: the page's chrome switches with the class, the canvas and keys with these variables
     root.classList.toggle('theme-light', ui.theme === 'light');
     const vars = {
       '--canvas-bg': T.bg, '--check-base': T.checkBase, '--check': T.check, '--grid-color': T.grid,
       '--frame-stroke': T.frame.stroke, '--keyFg': T.keyFg, '--keyBorder': T.keyLine,
-      '--chipBg': T.key.solid, '--chipFg': T.keyFg, '--chipBorder': T.keyLine, '--muted': T.plus,
+      '--muted': T.plus,
       '--accent-ink': KSV.ink(ui.accent, ui.theme)
     };
     Object.keys(vars).forEach((k) => root.style.setProperty(k, vars[k]));
@@ -255,30 +262,40 @@
   function renderLr() {
     renderSeg($('lrSeg'), [['off', 'off'], ['on', 'on']], ui.lr ? 'on' : 'off', false, (v) => setLr(v === 'on'));
   }
+  function renderCombo() {
+    renderSeg($('comboSeg'), [['off', 'off'], ['on', 'on']], ui.combo ? 'on' : 'off', false, (v) => setCombo(v === 'on'));
+  }
   function renderLayout() {
-    renderSeg($('layoutSeg'), [['board', 'keyboard'], ['keycaps', 'keycaps<span class="seg-beta">beta</span>']], ui.layout, false, changeLayout);
+    renderSeg($('layoutSeg'), [['board', 'keyboard'], ['keycaps', 'keycaps']], ui.layout, false, changeLayout);
   }
   function renderExt() {
     renderSeg($('extSeg'), FORMATS.map((f) => [f, f, !encodable.has(f)]), ui.ext, false, changeExt);
   }
-  // the page's case and grid, drawn in the keyboard export: two independent toggle pills
-  // (not a segmented control, which reads as one choice among several)
+  // the page's case and grid, drawn in the export: independent toggle pills (not a segmented control, which reads as one choice among several)
   function renderShow() {
-    const c = $('showSeg'), off = ui.layout !== 'board';
-    c.classList.toggle('disabled', off);
+    const c = $('showSeg');
     c.innerHTML = '';
-    [['frame', 'frame', 'keyboard frame'], ['grid', 'grid', 'background grid']].forEach(([key, label, aria]) => {
+    [['frame', 'frame', 'frame'], ['grid', 'grid', 'background grid']].forEach(([key, label, aria]) => {
       const b = el('button', ui[key] ? 'on' : '', label);
       b.setAttribute('aria-pressed', ui[key]);
       b.setAttribute('aria-label', aria);
-      if (off) b.disabled = true; else b.onclick = () => { ui[key] = !ui[key]; renderShow(); refresh(); };
+      b.onclick = () => { ui[key] = !ui[key]; renderShow(); refresh(); };
       c.appendChild(b);
     });
   }
-  // solid or translucent keys and case: the keyboard export only
+  // keycaps only (their rows are hidden in the keyboard layout): where the "+" goes, which keys glow
+  function renderCapsOpts() {
+    const off = ui.layout === 'board';
+    ['plusSeg', 'glowSeg'].forEach((id) => { $(id).closest('.opt-row').hidden = off; });
+    renderSeg($('plusSeg'), [['all', 'all', false, 'plus between all keys'], ['key', 'key', false, 'plus before the trigger key only'], ['none', 'none', false, 'no plus']],
+      ui.plus, false, (v) => { ui.plus = v; renderCapsOpts(); refresh(); });
+    renderSeg($('glowSeg'), [['all', 'all', false, 'all keys glow'], ['mods', 'mods', false, 'modifiers glow'], ['key', 'key', false, 'trigger key glows'], ['none', 'none', false, 'no glow']],
+      ui.glow, false, (v) => { ui.glow = v; renderCapsOpts(); refresh(); });
+  }
+  // solid or translucent keys and case
   function renderSurface() {
     renderSeg($('surfaceSeg'), [['solid', 'solid', false, 'solid keys and frame'], ['translucent', 'translucent', false, 'translucent keys and frame, like the page']],
-      ui.surface, ui.layout !== 'board', (v) => { ui.surface = v; renderSurface(); refresh(); });
+      ui.surface, false, (v) => { ui.surface = v; renderSurface(); refresh(); });
   }
   function renderTheme() {
     renderSeg($('themeSeg'), [['dark', 'dark'], ['light', 'light']], ui.theme, false, (v) => { ui.theme = v; renderTheme(); refresh(); });
@@ -304,7 +321,7 @@
   const LAYOUTS = ['board', 'keycaps'];
   function changeLayout(v) {
     ui.layout = v;
-    renderLayout(); renderShow(); renderSurface(); refresh();
+    renderLayout(); renderShow(); renderSurface(); renderCapsOpts(); refresh();
   }
   function cycleLayout() {
     changeLayout(LAYOUTS[(LAYOUTS.indexOf(ui.layout) + 1) % LAYOUTS.length]);
@@ -341,6 +358,15 @@
     }
     renderLr(); refresh();
   }
+  // combo mode: trigger keys stack. Off again, only the last one clicked stays
+  function setCombo(on) {
+    ui.combo = on; state.combo = on;
+    if (!on) {
+      const keys = [...state.sel].filter((c) => !KSVSelect.MODS.has(c));
+      keys.slice(0, -1).forEach((c) => state.sel.delete(c));
+    }
+    renderCombo(); refresh();
+  }
   function reset() {
     state.sel = new Set(); state.dbl = new Set();
     refresh();
@@ -355,8 +381,8 @@
       // theme colours (KSV.THEMES); JPG has no alpha, so a transparent JPG falls back to the theme's fill
       bg: trans ? 'transparent' : T.bg, jpgBg: T.bg, badgeRing: T.bg, gridColor: T.grid,
       fg: T.keyFg, keyBorder: T.keyBorder, plus: T.plus, sub: T.sub,
-      // the surface option is the keyboard's; keycaps stay solid
-      keyBg: T.key[ui.layout === 'board' ? ui.surface : 'solid'],
+      // key surface (both layouts) and the keycaps' "+" and glow
+      keyBg: T.key[ui.surface], plusMode: ui.plus, capsGlow: ui.glow,
       frameFill: T.frame[ui.surface], frameStroke: T.frame.stroke,
       frameBlur: ui.surface === 'translucent' ? KSV.FRAME.blur : 0,
       // filename hints: theme, and alpha when transparent
@@ -537,17 +563,16 @@
     FORMATS.forEach((f) => { if (KSV.canEncode(f)) encodable.add(f); });
     restore(); // load saved UI options; the key selection stays at its default
     if (!encodable.has(ui.ext)) ui.ext = 'png';
-    state.lr = ui.lr;
+    state.lr = ui.lr; state.combo = ui.combo;
     setAccent(ui.accent); // sets root --accent/--onFg
 
     // mount the interactive keyboard; onChange fires on every click
     kbMount.appendChild(KSV.buildKeyboard(state, refresh));
     buildSpotLayer();
 
-    renderHyper(); renderLr(); renderLayout(); renderExt(); renderTheme(); renderBgSeg(); renderShow(); renderSurface(); renderSwatches();
+    renderHyper(); renderLr(); renderCombo(); renderLayout(); renderExt(); renderTheme(); renderBgSeg(); renderShow(); renderSurface(); renderCapsOpts(); renderSwatches();
     renderVersion();
     renderIcons();
-    $('resetBtn').onclick = reset;
     exportBtn.onclick = exportNow;
     $('smallScreenClose').onclick = () => $('smallScreenClose').parentNode.remove();
     copyBtn.onclick = copyNow;
@@ -556,7 +581,8 @@
 
     alignToGrid();
     new ResizeObserver(alignToGrid).observe(root.querySelector('.stage'));
-    document.fonts.ready.then(alignToGrid); // the title's font can move the case
+    // the title's font can move the case; the keycaps preview draws with the webfont
+    document.fonts.ready.then(() => { alignToGrid(); refresh(); });
 
     startGlow();
     bindHotkeys();

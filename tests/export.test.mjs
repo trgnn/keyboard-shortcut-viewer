@@ -19,6 +19,12 @@ const CASES = {
   'board-frame-grid': [state(['cmd', 'k']), { layout: 'board', frame: true, grid: true, gridColor: 'rgba(255,255,255,.02)' }],
   'board-translucent-frame': [state(['cmd', 'k']), { layout: 'board', frame: true, keyBg: 'rgba(19,21,25,0.6)', frameFill: 'rgba(13,15,18,0.4)' }],
   'keycaps-hyper-f12': [state(['caps', 'F12'], { hyper: true }), { layout: 'keycaps' }],
+  'keycaps-cmd-k': [state(['cmd', 'k']), { layout: 'keycaps' }],
+  'keycaps-no-plus-frame-grid': [state(['ctrl', 'opt', 'F10']), { layout: 'keycaps', plusMode: 'none', frame: true, grid: true, gridColor: 'rgba(255,255,255,.02)' }],
+  'keycaps-double-shift': [state(['lshift'], { dbl: new Set(['lshift']) }), { layout: 'keycaps' }],
+  // tab is the trigger, not a modifier: one "+" before it, only the modifiers glow
+  'keycaps-cmd-double-k': [state(['cmd', 'k'], { dbl: new Set(['k']) }), { layout: 'keycaps' }],
+  'keycaps-plus-key-glow-mods': [state(['ctrl', 'opt', 'tab']), { layout: 'keycaps', plusMode: 'key', capsGlow: 'mods' }],
 };
 
 for (const [name, [st, opts]] of Object.entries(CASES)) {

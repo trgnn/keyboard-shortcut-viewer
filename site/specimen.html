@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="robots" content="noindex" />
+<title>KSV · keycaps playground</title>
+<!-- dev page, not deployed (.vercelignore): try the keycaps' options and sizes live,
+     through the export engine itself. localhost:8124/specimen.html -->
+<link rel="stylesheet" href="styles.css" />
+<link rel="stylesheet" href="specimen.css" />
+</head>
+<body class="specimen">
+<aside class="pg-panel" id="panel"></aside>
+<main class="pg-main">
+  <header>
+    <h1>Keycaps playground</h1>
+    <p>Everything below is drawn by the export engine (<code>KSV.render</code>) with the variables on the left. The spec at the bottom of the panel is what would go into <code>CAPS</code>.</p>
+  </header>
+  <section><h2>Shortcut</h2><div id="shortcut" class="row"></div></section>
+  <section><h2>Every key</h2><div id="keys" class="row"></div></section>
+</main>
+<script src="config.js"></script>
+<script src="select.js"></script>
+<script src="ksv.js"></script>
+<script src="specimen.js"></script>
+</body>
+</html>
